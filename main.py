@@ -169,7 +169,7 @@ st.write(f"**Estimated ON time:** {t_on.magnitude:.4f} ms")
 
 
 # --- PLOTTING ---
-st.header("4. Field and Force Profiles")
+st.header("3. Field and Force Profiles")
 
 # Generate range from -2L to +2L for z-axis
 z_vals = np.linspace(-L_val*2, L_val*2, 200) * u.mm
@@ -203,6 +203,29 @@ fig.tight_layout()
 
 # Render plot in Streamlit
 st.pyplot(fig)
+
+st.header("4. Magnetic Field Profile")
+
+# Generate data arrays for the plot
+z_vals = np.linspace(-L_val * 2.5, L_val * 2.5, 300) * u.mm
+z_plot_mm = z_vals.m_as(u.mm)
+B_plot = B_z(z_vals, R_eff, L, N, I).m_as(u.mT)
+
+fig_field, ax1 = plt.subplots(figsize=(8, 5))
+
+# --- Field plot ---
+ax1.plot(z_plot_mm, B_plot, 'b-', linewidth=2, label='$B_z$')
+ax1.axvline(z_0.m_as(u.mm), color='k', linestyle=':', label='Sensor')
+ax1.axvspan(-L.m_as(u.mm)/2, L.m_as(u.mm)/2, color='k', alpha=0.2, label='Solenoid extent')
+
+ax1.set_xlabel('z (mm)')
+ax1.set_ylabel('$B_z$ (mT)')
+ax1.legend(loc='upper right')
+ax1.grid(True, alpha=0.3)
+ax1.set_title('On-axis magnetic field')
+
+fig_field.tight_layout()
+st.pyplot(fig_field)
 
 
 # --- Solenoid cross-section plot ---
