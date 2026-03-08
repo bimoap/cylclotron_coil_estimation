@@ -10,6 +10,11 @@ u = pint.get_application_registry()
 st.set_page_config(page_title="Coil Estimates", layout="wide")
 st.title("Electromagnet Coil & Projectile Estimator")
 
+# --- HELPER FUNCTION ---
+def awg_diameter(n):
+    """Calculate bare wire diameter (mm) from AWG number."""
+    return 0.127 * 92 ** ((36 - n) / 39)
+
 # --- SIDEBAR INPUTS ---
 st.sidebar.header("Input Parameters")
 
@@ -20,10 +25,27 @@ t_enamel_thou = st.sidebar.number_input("Enamel Thickness (thou)", min_value=0.0
 t_enamel_mm = t_enamel_thou * 0.0254
 st.sidebar.caption(f"*(Metric equivalent: {t_enamel_mm:.4f} mm)*")
 
+# Calculate Dynamic Default for Fill Factor
+d_cu_val = awg_diameter(awg)
+d_total_val = d_cu_val + (2 * t_enamel_mm)
+
+# Orthocyclic limit = pi / (2 * sqrt(3)) ≈ 0.9069
+geom_limit = np.pi / (2 * np.sqrt(3))
+# Copper Space Factor scales the geometric limit by the bare-to-total area ratio
+f_cu_default = geom_limit * ((d_cu_val / d_total_val) ** 2)
+
+f_val = st.sidebar.number_input(
+    "Copper Fill Factor 'f'", 
+    value=float(f_cu_default), 
+    min_value=0.1, 
+    max_value=1.0, 
+    format="%.4f"
+)
+st.sidebar.caption(f"*(Theoretical orthocyclic max for AWG {awg}: **{f_cu_default:.4f}**)*")
+
 V_val = st.sidebar.number_input("Voltage (V)", value=12.0)
 a_val = st.sidebar.number_input("Inner Radius 'a' (mm)", value=12.5)
 L_val = st.sidebar.number_input("Solenoid Length 'L' (mm)", value=20.0)
-f_val = st.sidebar.number_input("Packing Factor 'f'", value=0.6, max_value=1.0)
 j_val = st.sidebar.number_input("Current Density (A/mm²)", value=4.0)
 r_ball_val = st.sidebar.number_input("Iron Ball Radius (mm)", value=6.0)
 z0_val = st.sidebar.number_input("Switch Position z_0 (mm)", value=-12.0)
@@ -42,19 +64,15 @@ rho = 1.68e-8 * u.ohm * u.m  # copper resistivity
 rho_cu = 8.96 * u.g / u.cm**3
 rho_iron = 7874 * u.kg / u.m**3
 
-def awg_diameter(n):
-    """Calculate wire diameter from AWG number."""
-    return 0.127 * u.mm * 92 ** ((36 - n) / 39)
-
 # --- WIRE GEOMETRY WITH ENAMEL ---
-d_cu = awg_diameter(awg)                   # Bare copper diameter
-d_total = d_cu + (2 * t_enamel)            # Total wire diameter including enamel
+d_cu = d_cu_val * u.mm
+d_total = d_total_val * u.mm
 
-A_cu = np.pi * (d_cu / 2) ** 2             # Bare copper area (for electrical/resistance)
-A_total = np.pi * (d_total / 2) ** 2       # Total cross-sectional area (for spatial packing)
+A_cu = np.pi * (d_cu / 2) ** 2             
+A_total = np.pi * (d_total / 2) ** 2       
 
-# Calculate outer radius b using the TOTAL wire area for space, but j relies on bare copper
-b = np.sqrt(a**2 + (V * A_total) / (j * rho * f * np.pi * L))
+# Calculate outer radius b using the BARE copper area and the Copper Fill Factor
+b = np.sqrt(a**2 + (V * A_cu) / (j * rho * f * np.pi * L))
 
 # --- DERIVED QUANTITIES ---
 l_bar = np.pi * (a + b)
