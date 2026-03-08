@@ -1,6 +1,7 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import pint
 
 # Initialize pint registry
@@ -70,7 +71,7 @@ col1.metric("Current", f"{I.to(u.A).magnitude:.3f} A")
 col2.metric("Power", f"{P.magnitude:.1f} W")
 
 
-# --- BALL & MAGNETIC FIELD ---
+# --- BALL & MAGNETIC FIELD FUNCTIONS ---
 def log_mean(a, b):
     return (b - a) / np.log(b / a)
 
@@ -141,7 +142,7 @@ col2.metric("Final Velocity", f"{v_f.to(u.mm/u.s).magnitude:.0f} mm/s")
 col3.metric("Final Velocity (km/h)", f"{v_f.to(u.km/u.h).magnitude:.2f} km/h")
 
 
-# --- INDUCTANCE ---
+# --- 3. INDUCTANCE ---
 def nagaoka_coefficient(R, L):
     """Nagaoka coefficient for finite solenoid."""
     k = 2 * R / L 
@@ -168,43 +169,16 @@ col4.metric("Time Constant (τ)", f"{tau.to(u.ms).magnitude:.1f} ms")
 st.write(f"**Estimated ON time:** {t_on.magnitude:.4f} ms")
 
 
-# --- PLOTTING ---
-# --- 3. MAGNETIC FIELD PLOT ---
-st.header("3. On-axis Magnetic Field Profile")
+# --- 4. MAGNETIC FIELD PLOT ---
+st.header("4. On-axis Magnetic Field Profile")
 
 # Generate data arrays for the plot
-z_vals = np.linspace(-L_val * 2.5, L_val * 2.5, 300) * u.mm
-z_plot_mm = z_vals.m_as(u.mm)
-B_plot = B_z(z_vals, R_eff, L, N, I).m_as(u.mT)
+z_vals_field = np.linspace(-L_val * 2.5, L_val * 2.5, 300) * u.mm
+z_plot_mm = z_vals_field.m_as(u.mm)
+B_plot = B_z(z_vals_field, R_eff, L, N, I).m_as(u.mT)
 
 fig_field, ax1 = plt.subplots(figsize=(8, 5))
 
-# --- Field plot ---
-ax1.plot(z_plot_mm, B_plot, 'b-', linewidth=2, label='$B_z$')
-ax1.axvline(z_0.m_as(u.mm), color='k', linestyle=':', label='Sensor')
-ax1.axvspan(-L.m_as(u.mm)/2, L.m_as(u.mm)/2, color='k', alpha=0.2, label='Solenoid extent')
-
-ax1.set_xlabel('z (mm)')
-ax1.set_ylabel('$B_z$ (mT)')
-ax1.legend(loc='upper right')
-ax1.grid(True, alpha=0.3)
-ax1.set_title('On-axis magnetic field')
-
-fig_field.tight_layout()
-
-# Render plot in Streamlit
-st.pyplot(fig_field)
-
-st.header("4. Magnetic Field Profile")
-
-# Generate data arrays for the plot
-z_vals = np.linspace(-L_val * 2.5, L_val * 2.5, 300) * u.mm
-z_plot_mm = z_vals.m_as(u.mm)
-B_plot = B_z(z_vals, R_eff, L, N, I).m_as(u.mT)
-
-fig_field, ax1 = plt.subplots(figsize=(8, 5))
-
-# --- Field plot ---
 ax1.plot(z_plot_mm, B_plot, 'b-', linewidth=2, label='$B_z$')
 ax1.axvline(z_0.m_as(u.mm), color='k', linestyle=':', label='Sensor')
 ax1.axvspan(-L.m_as(u.mm)/2, L.m_as(u.mm)/2, color='k', alpha=0.2, label='Solenoid extent')
@@ -219,10 +193,43 @@ fig_field.tight_layout()
 st.pyplot(fig_field)
 
 
-# --- Solenoid cross-section plot ---
-st.header("5. Solenoid Cross-Section")
+# --- 5. COMBINED PLOTTING ---
+st.header("5. Combined Field and Force Profiles")
 
-import matplotlib as mpl
+# Generate range from -2L to +2L for z-axis
+z_vals = np.linspace(-L_val*2, L_val*2, 200) * u.mm
+
+# Calculate B_z and F_z over the z range
+B_vals = B_z(z_vals, R_eff, L, N, I).to(u.mT).magnitude
+F_vals = F_z(z_vals, R_eff, L, N, I, r_ball).to(u.mN).magnitude
+
+fig, ax1 = plt.subplots(figsize=(10, 5))
+
+# Plot B_z
+ax1.set_xlabel('Position z (mm)')
+ax1.set_ylabel('Magnetic Field B_z (mT)', color='tab:blue')
+ax1.plot(z_vals.magnitude, B_vals, color='tab:blue', label='B_z')
+ax1.tick_params(axis='y', labelcolor='tab:blue')
+ax1.grid(True, alpha=0.3)
+
+# Indicate the Switch ON/OFF region
+z_on_mag = (z_0 - r_ball).to(u.mm).magnitude
+z_off_mag = (z_0 + r_ball).to(u.mm).magnitude
+ax1.axvspan(z_on_mag, z_off_mag, color='orange', alpha=0.2, label='Coil ON Region (Work Integration)')
+
+# Plot F_z on a secondary y-axis
+ax2 = ax1.twinx()
+ax2.set_ylabel('Axial Force F_z (mN)', color='tab:red')
+ax2.plot(z_vals.magnitude, F_vals, color='tab:red', linestyle='--', label='F_z')
+ax2.tick_params(axis='y', labelcolor='tab:red')
+
+fig.legend(loc='upper right', bbox_to_anchor=(0.9, 0.9), bbox_transform=ax1.transAxes)
+fig.tight_layout()
+st.pyplot(fig)
+
+
+# --- 6. SOLENOID CROSS-SECTION PLOT ---
+st.header("6. Solenoid Cross-Section")
 
 fig2, ax3 = plt.subplots(figsize=(8, 5))
 
@@ -288,6 +295,4 @@ ax3.grid(True, alpha=0.3)
 ax3.set_title('Solenoid cross-section (to scale)')
 
 fig2.tight_layout()
-
-# Render in Streamlit instead of plt.show()
 st.pyplot(fig2)
