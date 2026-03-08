@@ -169,40 +169,31 @@ st.write(f"**Estimated ON time:** {t_on.magnitude:.4f} ms")
 
 
 # --- PLOTTING ---
-st.header("3. Field and Force Profiles")
+# --- 3. MAGNETIC FIELD PLOT ---
+st.header("3. On-axis Magnetic Field Profile")
 
-# Generate range from -2L to +2L for z-axis
-z_vals = np.linspace(-L_val*2, L_val*2, 200) * u.mm
+# Generate data arrays for the plot
+z_vals = np.linspace(-L_val * 2.5, L_val * 2.5, 300) * u.mm
+z_plot_mm = z_vals.m_as(u.mm)
+B_plot = B_z(z_vals, R_eff, L, N, I).m_as(u.mT)
 
-# Calculate B_z and F_z over the z range
-B_vals = B_z(z_vals, R_eff, L, N, I).to(u.mT).magnitude
-F_vals = F_z(z_vals, R_eff, L, N, I, r_ball).to(u.mN).magnitude
+fig_field, ax1 = plt.subplots(figsize=(8, 5))
 
-fig, ax1 = plt.subplots(figsize=(10, 5))
+# --- Field plot ---
+ax1.plot(z_plot_mm, B_plot, 'b-', linewidth=2, label='$B_z$')
+ax1.axvline(z_0.m_as(u.mm), color='k', linestyle=':', label='Sensor')
+ax1.axvspan(-L.m_as(u.mm)/2, L.m_as(u.mm)/2, color='k', alpha=0.2, label='Solenoid extent')
 
-# Plot B_z
-ax1.set_xlabel('Position z (mm)')
-ax1.set_ylabel('Magnetic Field B_z (mT)', color='tab:blue')
-ax1.plot(z_vals.magnitude, B_vals, color='tab:blue', label='B_z')
-ax1.tick_params(axis='y', labelcolor='tab:blue')
+ax1.set_xlabel('z (mm)')
+ax1.set_ylabel('$B_z$ (mT)')
+ax1.legend(loc='upper right')
 ax1.grid(True, alpha=0.3)
+ax1.set_title('On-axis magnetic field')
 
-# Indicate the Switch ON/OFF region
-z_on_mag = (z_0 - r_ball).to(u.mm).magnitude
-z_off_mag = (z_0 + r_ball).to(u.mm).magnitude
-ax1.axvspan(z_on_mag, z_off_mag, color='orange', alpha=0.2, label='Coil ON Region (Work Integration)')
-
-# Plot F_z on a secondary y-axis
-ax2 = ax1.twinx()
-ax2.set_ylabel('Axial Force F_z (mN)', color='tab:red')
-ax2.plot(z_vals.magnitude, F_vals, color='tab:red', linestyle='--', label='F_z')
-ax2.tick_params(axis='y', labelcolor='tab:red')
-
-fig.legend(loc='upper right', bbox_to_anchor=(0.9, 0.9), bbox_transform=ax1.transAxes)
-fig.tight_layout()
+fig_field.tight_layout()
 
 # Render plot in Streamlit
-st.pyplot(fig)
+st.pyplot(fig_field)
 
 st.header("4. Magnetic Field Profile")
 
