@@ -82,6 +82,52 @@ col1.metric("Current", f"{I.to(u.A).magnitude:.3f} A")
 col2.metric("Power", f"{P.magnitude:.1f} W")
 
 
+# --- 2. SPOOL & COIL VISUALIZATION ---
+st.header("2. Spool & Coil Geometry Visualization")
+
+fig_geom, ax_geom = plt.subplots(figsize=(8, 5))
+
+L_mm = L.to(u.mm).magnitude
+a_mm = a.to(u.mm).magnitude
+b_mm = b.to(u.mm).magnitude
+
+# Assume a standard bobbin/spool thickness for visualization purposes
+t_bobbin = 2.0  # mm
+
+# --- Plot Bobbin/Spool ---
+# Top flange
+ax_geom.add_patch(mpl.patches.Rectangle((-L_mm/2 - t_bobbin, a_mm - t_bobbin), t_bobbin, (b_mm - a_mm) + t_bobbin*2, facecolor='darkgray', edgecolor='black', label='Spool/Bobbin'))
+ax_geom.add_patch(mpl.patches.Rectangle((L_mm/2, a_mm - t_bobbin), t_bobbin, (b_mm - a_mm) + t_bobbin*2, facecolor='darkgray', edgecolor='black'))
+# Top tube
+ax_geom.add_patch(mpl.patches.Rectangle((-L_mm/2, a_mm - t_bobbin), L_mm, t_bobbin, facecolor='darkgray', edgecolor='black'))
+
+# Bottom flange (mirror)
+ax_geom.add_patch(mpl.patches.Rectangle((-L_mm/2 - t_bobbin, -b_mm - t_bobbin), t_bobbin, (b_mm - a_mm) + t_bobbin*2, facecolor='darkgray', edgecolor='black'))
+ax_geom.add_patch(mpl.patches.Rectangle((L_mm/2, -b_mm - t_bobbin), t_bobbin, (b_mm - a_mm) + t_bobbin*2, facecolor='darkgray', edgecolor='black'))
+# Bottom tube (mirror)
+ax_geom.add_patch(mpl.patches.Rectangle((-L_mm/2, -a_mm), L_mm, t_bobbin, facecolor='darkgray', edgecolor='black'))
+
+# --- Plot Coil Winding ---
+ax_geom.add_patch(mpl.patches.Rectangle((-L_mm/2, a_mm), L_mm, b_mm - a_mm, facecolor='peru', hatch='///', edgecolor='black', label='Copper Winding'))
+ax_geom.add_patch(mpl.patches.Rectangle((-L_mm/2, -b_mm), L_mm, b_mm - a_mm, facecolor='peru', hatch='///', edgecolor='black'))
+
+# Center Axis
+ax_geom.axhline(0, color='black', linestyle='-.', linewidth=1, label='Center Axis')
+
+# Labels and Styling
+ax_geom.set_xlim(-L_mm/2 - 10, L_mm/2 + 10)
+ax_geom.set_ylim(-b_mm - 10, b_mm + 10)
+ax_geom.set_aspect('equal')
+ax_geom.set_xlabel('Length z (mm)')
+ax_geom.set_ylabel('Radius r (mm)')
+ax_geom.legend(loc='upper right', bbox_to_anchor=(1.35, 1))
+ax_geom.grid(True, alpha=0.3)
+ax_geom.set_title('Cross-Sectional View of Bobbin and Winding')
+
+fig_geom.tight_layout()
+st.pyplot(fig_geom)
+
+
 # --- BALL & MAGNETIC FIELD FUNCTIONS ---
 def log_mean(rad_a, rad_b):
     return (rad_b - rad_a) / np.log(rad_b / rad_a)
@@ -136,7 +182,7 @@ KE_0 = 0.5 * m_ball * v_0**2
 KE_f = KE_0 + W
 v_f = np.sqrt(2 * KE_f / m_ball)
 
-st.header("2. Iron Ball & Switch Configuration")
+st.header("3. Iron Ball & Switch Configuration")
 col1, col2, col3 = st.columns(3)
 col1.metric("Ball Volume", f"{V_ball.to(u.mm**3).magnitude:.0f} mm³")
 col2.metric("Ball Mass", f"{m_ball.to(u.g).magnitude:.2f} g")
@@ -153,7 +199,7 @@ col2.metric("Final Velocity", f"{v_f.to(u.mm/u.s).magnitude:.0f} mm/s")
 col3.metric("Final Velocity (km/h)", f"{v_f.to(u.km/u.h).magnitude:.2f} km/h")
 
 
-# --- 3. INDUCTANCE ---
+# --- 4. INDUCTANCE ---
 def nagaoka_coefficient(R, L):
     """Nagaoka coefficient for finite solenoid."""
     k = 2 * R / L 
@@ -171,7 +217,7 @@ L_coil = solenoid_inductance(N, R_eff, L)
 tau = L_coil / R_coil
 t_on = (2 * r_ball / v_f).to(u.ms)
 
-st.header("3. Inductance & Time Constant")
+st.header("4. Inductance & Time Constant")
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Nagaoka Coeff (K)", f"{nagaoka_coefficient(R_eff, L):.2f}")
 col2.metric("Resistance", f"{R_coil.to(u.ohm).magnitude:.1f} Ω")
@@ -180,8 +226,8 @@ col4.metric("Time Constant (τ)", f"{tau.to(u.ms).magnitude:.1f} ms")
 st.write(f"**Estimated ON time:** {t_on.magnitude:.4f} ms")
 
 
-# --- 4. MAGNETIC FIELD PLOT ---
-st.header("4. On-axis Magnetic Field Profile")
+# --- 5. MAGNETIC FIELD PLOT ---
+st.header("5. On-axis Magnetic Field Profile")
 
 # Generate data arrays for the plot
 z_vals_field = np.linspace(-L_val * 2.5, L_val * 2.5, 300) * u.mm
@@ -204,8 +250,8 @@ fig_field.tight_layout()
 st.pyplot(fig_field)
 
 
-# --- 5. COMBINED PLOTTING ---
-st.header("5. Combined Field and Force Profiles")
+# --- 6. COMBINED PLOTTING ---
+st.header("6. Combined Field and Force Profiles")
 
 # Generate range from -2L to +2L for z-axis
 z_vals = np.linspace(-L_val*2, L_val*2, 200) * u.mm
@@ -239,14 +285,11 @@ fig.tight_layout()
 st.pyplot(fig)
 
 
-# --- 6. SOLENOID CROSS-SECTION PLOT ---
-st.header("6. Solenoid Cross-Section")
+# --- 7. SOLENOID SYSTEM CROSS-SECTION PLOT ---
+st.header("7. Solenoid System Cross-Section")
 
 fig2, ax3 = plt.subplots(figsize=(8, 5))
 
-L_mm = L.to(u.mm).magnitude
-a_mm = a.to(u.mm).magnitude
-b_mm = b.to(u.mm).magnitude
 r_ball_mm = r_ball.to(u.mm).magnitude
 z_0_mm = z_0.to(u.mm).magnitude
 
@@ -303,7 +346,7 @@ ax3.set_xlabel('z (mm)')
 ax3.set_ylabel('r (mm)')
 ax3.legend(loc='upper right')
 ax3.grid(True, alpha=0.3)
-ax3.set_title('Solenoid cross-section (to scale)')
+ax3.set_title('System cross-section including ball and sensors (to scale)')
 
 fig2.tight_layout()
 st.pyplot(fig2)
