@@ -14,6 +14,12 @@ st.title("Electromagnet Coil & Projectile Estimator")
 st.sidebar.header("Input Parameters")
 
 awg = st.sidebar.number_input("Wire AWG", min_value=1, max_value=40, value=28, step=1)
+
+# Enamel Thickness Input (thou to mm conversion)
+t_enamel_thou = st.sidebar.number_input("Enamel Thickness (thou)", min_value=0.0, max_value=10.0, value=1.0, step=0.1)
+t_enamel_mm = t_enamel_thou * 0.0254
+st.sidebar.caption(f"*(Metric equivalent: {t_enamel_mm:.4f} mm)*")
+
 V_val = st.sidebar.number_input("Voltage (V)", value=12.0)
 a_val = st.sidebar.number_input("Inner Radius 'a' (mm)", value=12.5)
 L_val = st.sidebar.number_input("Solenoid Length 'L' (mm)", value=20.0)
@@ -30,6 +36,7 @@ f = f_val
 j = j_val * u.A / u.mm**2
 r_ball = r_ball_val * u.mm
 z_0 = z0_val * u.mm
+t_enamel = t_enamel_mm * u.mm
 
 rho = 1.68e-8 * u.ohm * u.m  # copper resistivity
 rho_cu = 8.96 * u.g / u.cm**3
@@ -39,24 +46,28 @@ def awg_diameter(n):
     """Calculate wire diameter from AWG number."""
     return 0.127 * u.mm * 92 ** ((36 - n) / 39)
 
-d_wire = awg_diameter(awg)
-A_w = np.pi * (d_wire / 2) ** 2
+# --- WIRE GEOMETRY WITH ENAMEL ---
+d_cu = awg_diameter(awg)                   # Bare copper diameter
+d_total = d_cu + (2 * t_enamel)            # Total wire diameter including enamel
 
-# Calculate outer radius b
-b = np.sqrt(a**2 + (V * A_w) / (j * rho * f * np.pi * L))
+A_cu = np.pi * (d_cu / 2) ** 2             # Bare copper area (for electrical/resistance)
+A_total = np.pi * (d_total / 2) ** 2       # Total cross-sectional area (for spatial packing)
+
+# Calculate outer radius b using the TOTAL wire area for space, but j relies on bare copper
+b = np.sqrt(a**2 + (V * A_total) / (j * rho * f * np.pi * L))
 
 # --- DERIVED QUANTITIES ---
 l_bar = np.pi * (a + b)
 N = V / (j * rho * l_bar)
-I = j * A_w
+I = j * A_cu                               # Current is driven through bare copper
 total_length = N * l_bar
 P = (I * V).to(u.W)
-m_wire = rho_cu * A_w * l_bar * N
+m_wire = rho_cu * A_cu * l_bar * N         # Mass is calculated from bare copper volume
 
 st.header("1. Coil Geometry & Derived Quantities")
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Wire Diameter", f"{d_wire.to(u.mm).magnitude:.3f} mm")
-col2.metric("Conductor Area", f"{A_w.to(u.mm**2).magnitude:.4f} mm²")
+col1.metric("Bare Cu Diameter", f"{d_cu.to(u.mm).magnitude:.3f} mm")
+col2.metric("Total Wire Dia.", f"{d_total.to(u.mm).magnitude:.3f} mm")
 col3.metric("Outer Radius (b)", f"{b.to(u.mm).magnitude:.2f} mm")
 col4.metric("Radial Build", f"{(b - a).to(u.mm).magnitude:.2f} mm")
 
@@ -64,7 +75,7 @@ col1, col2, col3, col4 = st.columns(4)
 col1.metric("Mean Turn Length", f"{l_bar.to(u.mm).magnitude:.1f} mm")
 col2.metric("Number of Turns", f"{N.to(u.dimensionless).magnitude:.0f}")
 col3.metric("Wire Length", f"{total_length.to(u.m).magnitude:.0f} m")
-col4.metric("Wire Mass", f"{m_wire.to(u.g).magnitude:.0f} g")
+col4.metric("Cu Wire Mass", f"{m_wire.to(u.g).magnitude:.0f} g")
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Current", f"{I.to(u.A).magnitude:.3f} A")
@@ -72,8 +83,8 @@ col2.metric("Power", f"{P.magnitude:.1f} W")
 
 
 # --- BALL & MAGNETIC FIELD FUNCTIONS ---
-def log_mean(a, b):
-    return (b - a) / np.log(b / a)
+def log_mean(rad_a, rad_b):
+    return (rad_b - rad_a) / np.log(rad_b / rad_a)
 
 def B_z(z, R, L, N, I):
     """On-axis magnetic field of a finite solenoid."""
@@ -155,7 +166,7 @@ def solenoid_inductance(N, R, L):
     K = nagaoka_coefficient(R, L)
     return mu_0 * N**2 * np.pi * R**2 * K / L
 
-R_coil = rho * total_length / A_w
+R_coil = rho * total_length / A_cu         # Resistance calculation strictly uses bare Cu
 L_coil = solenoid_inductance(N, R_eff, L)
 tau = L_coil / R_coil
 t_on = (2 * r_ball / v_f).to(u.ms)
