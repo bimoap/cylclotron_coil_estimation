@@ -44,7 +44,7 @@ f_val = st.sidebar.number_input(
 st.sidebar.caption(f"*(Theoretical orthocyclic max for AWG {awg}: **{f_cu_default:.4f}**)*")
 
 V_val = st.sidebar.number_input("Voltage (V)", value=12.0)
-a_val = st.sidebar.number_input("Inner Radius 'a' (mm)", value=12.5)
+a_val = st.sidebar.number_input("Inner Radius 'a' (mm)", value=12.7)
 L_val = st.sidebar.number_input("Solenoid Length 'L' (mm)", value=20.0)
 
 # --- NEW: CALCULATION MODE ---
@@ -55,7 +55,7 @@ if calc_mode == "By Current Density":
     j_val = st.sidebar.number_input("Current Density (A/mm²)", value=4.0)
     b_val = None
 else:
-    b_val = st.sidebar.number_input("Outer Radius 'b' (mm)", value=25.0)
+    b_val = st.sidebar.number_input("Outer Radius 'b' (mm)", value=28.0)
     j_val = None
 
 st.sidebar.markdown("---")
