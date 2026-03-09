@@ -1,5 +1,6 @@
 import streamlit as st
 import numpy as np
+import matplotlib.subplots as plt_sub
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import pint
@@ -103,59 +104,59 @@ else:
 # --- DERIVED QUANTITIES ---
 l_bar = np.pi * (a + b)
 N = V / (j * rho * l_bar)
-I = j * A_cu                               # Current is driven through bare copper
-NI = N * I                                 # Ampere-Turns
+I = j * A_cu                               
+NI = N * I                                 
 total_length = N * l_bar
 P = (I * V).to(u.W)
-m_wire = rho_cu * A_cu * l_bar * N         # Mass is calculated from bare copper volume
+m_wire = rho_cu * A_cu * l_bar * N         
 
 st.header("1. Coil Geometry & Derived Quantities")
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Bare Cu Diameter", f"{d_cu.to(u.mm).magnitude:.3f} mm")
-col1.caption("$\\text{AWG Standard: } 0.127 \\times 92^{\\frac{36-n}{39}}$")
+col1.caption(f"0.127 × 92^((36-{awg})/39)")
 
 col2.metric("Total Wire Dia.", f"{d_total.to(u.mm).magnitude:.3f} mm")
-col2.caption("$d_{cu} + 2t_{enamel}$")
+col2.caption(f"{d_cu.to(u.mm).magnitude:.3f} mm + 2({t_enamel_mm:.4f} mm)")
 
 col3.metric("Outer Radius (b)", f"{b.to(u.mm).magnitude:.2f} mm")
 if calc_mode == "By Current Density":
-    col3.caption("$\\sqrt{a^2 + \\frac{V \\cdot A_{total}}{j \\cdot \\rho \\cdot f \\cdot \\pi \\cdot L}}$")
+    col3.caption(f"√({a_val:.2f}² + ({V_val:.1f}V × {A_total.to(u.mm**2).magnitude:.4f}mm²) / ({j.to(u.A/u.mm**2).magnitude:.2f}A/mm² × 1.68e-8Ω·m × {f_val:.4f} × π × {L_val:.1f}mm))")
 else:
-    col3.caption("$\\text{User Input}$")
+    col3.caption("User Input")
 
 col4.metric("Radial Build", f"{(b - a).to(u.mm).magnitude:.2f} mm")
-col4.caption("$b - a$")
+col4.caption(f"{b.to(u.mm).magnitude:.2f} mm - {a_val:.2f} mm")
 
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Mean Turn Length", f"{l_bar.to(u.mm).magnitude:.1f} mm")
-col1.caption("$\\pi(a + b)$")
+col1.caption(f"π × ({a_val:.2f} mm + {b.to(u.mm).magnitude:.2f} mm)")
 
 col2.metric("Number of Turns", f"{N.to(u.dimensionless).magnitude:.0f}")
-col2.caption("$\\frac{V}{j \\cdot \\rho \\cdot l_{bar}}$")
+col2.caption(f"{V_val:.1f} V / ({j.to(u.A/u.mm**2).magnitude:.2f} A/mm² × 1.68e-8 Ω·m × {l_bar.to(u.m).magnitude:.4f} m)")
 
 col3.metric("Wire Length", f"{total_length.to(u.m).magnitude:.0f} m")
-col3.caption("$N \\cdot l_{bar}$")
+col3.caption(f"{N.to(u.dimensionless).magnitude:.0f} turns × {l_bar.to(u.mm).magnitude:.1f} mm")
 
 col4.metric("Cu Wire Mass", f"{m_wire.to(u.g).magnitude:.0f} g")
-col4.caption("$\\rho_{cu} \\cdot A_{cu} \\cdot l_{bar} \\cdot N$")
+col4.caption(f"8.96 g/cm³ × {A_cu.to(u.cm**2).magnitude:.5f} cm² × {total_length.to(u.cm).magnitude:.1f} cm")
 
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Current", f"{I.to(u.A).magnitude:.3f} A")
-col1.caption("$j \\cdot A_{cu}$")
+col1.caption(f"{j.to(u.A/u.mm**2).magnitude:.2f} A/mm² × {A_cu.to(u.mm**2).magnitude:.4f} mm²")
 
 col2.metric("Peak Power", f"{P.magnitude:.1f} W")
-col2.caption("$I \\cdot V$")
+col2.caption(f"{I.to(u.A).magnitude:.3f} A × {V_val:.1f} V")
 
 col3.metric("Peak Current Density (j)", f"{j.to(u.A/u.mm**2).magnitude:.2f} A/mm²")
 if calc_mode == "By Current Density":
-    col3.caption("$\\text{User Input}$")
+    col3.caption("User Input")
 else:
-    col3.caption("$\\frac{V \\cdot A_{total}}{(b^2 - a^2) \\rho f \\pi L}$")
+    col3.caption(f"({V_val:.1f}V × {A_total.to(u.mm**2).magnitude:.4f}mm²) / (({b_val:.2f}² - {a_val:.2f}²) × 1.68e-8Ω·m × {f_val:.4f} × π × {L_val:.1f}mm)")
 
 col4.metric("Ampere-Turns (NI)", f"{NI.to(u.A).magnitude:.0f} AT")
-col4.caption("$N \\cdot I$")
+col4.caption(f"{N.to(u.dimensionless).magnitude:.0f} turns × {I.to(u.A).magnitude:.3f} A")
 
 
 # --- 2. SPOOL & COIL VISUALIZATION ---
@@ -167,10 +168,8 @@ L_mm = L.to(u.mm).magnitude
 a_mm = a.to(u.mm).magnitude
 b_mm = b.to(u.mm).magnitude
 
-# Assume a standard bobbin/spool thickness for visualization purposes
 t_bobbin = 2.0  # mm
 
-# --- Plot Bobbin/Spool ---
 # Top flange
 ax_geom.add_patch(mpl.patches.Rectangle((-L_mm/2 - t_bobbin, a_mm - t_bobbin), t_bobbin, (b_mm - a_mm) + t_bobbin*2, facecolor='darkgray', edgecolor='black', label='Spool/Bobbin'))
 ax_geom.add_patch(mpl.patches.Rectangle((L_mm/2, a_mm - t_bobbin), t_bobbin, (b_mm - a_mm) + t_bobbin*2, facecolor='darkgray', edgecolor='black'))
@@ -183,14 +182,13 @@ ax_geom.add_patch(mpl.patches.Rectangle((L_mm/2, -b_mm - t_bobbin), t_bobbin, (b
 # Bottom tube (mirror)
 ax_geom.add_patch(mpl.patches.Rectangle((-L_mm/2, -a_mm), L_mm, t_bobbin, facecolor='darkgray', edgecolor='black'))
 
-# --- Plot Coil Winding ---
+# Plot Coil Winding
 ax_geom.add_patch(mpl.patches.Rectangle((-L_mm/2, a_mm), L_mm, b_mm - a_mm, facecolor='peru', hatch='///', edgecolor='black', label='Copper Winding'))
 ax_geom.add_patch(mpl.patches.Rectangle((-L_mm/2, -b_mm), L_mm, b_mm - a_mm, facecolor='peru', hatch='///', edgecolor='black'))
 
 # Center Axis
 ax_geom.axhline(0, color='black', linestyle='-.', linewidth=1, label='Center Axis')
 
-# Labels and Styling
 ax_geom.set_xlim(-L_mm/2 - 10, L_mm/2 + 10)
 ax_geom.set_ylim(-b_mm - 10, b_mm + 10)
 ax_geom.set_aspect('equal')
@@ -209,7 +207,6 @@ def log_mean(rad_a, rad_b):
     return (rad_b - rad_a) / np.log(rad_b / rad_a)
 
 def B_z(z, R, L, N, I):
-    """On-axis magnetic field of a finite solenoid."""
     mu_0 = 4 * np.pi * 1e-7 * u.H / u.m
     z_plus = z + L / 2
     z_minus = z - L / 2
@@ -218,7 +215,6 @@ def B_z(z, R, L, N, I):
     return (mu_0 * N / L * I / 2) * (term_plus - term_minus)
 
 def dBz_dz(z, R, L, N, I):
-    """Derivative of on-axis field with respect to z."""
     mu_0 = 4 * np.pi * 1e-7 * u.H / u.m
     z_plus = z + L / 2
     z_minus = z - L / 2
@@ -227,7 +223,6 @@ def dBz_dz(z, R, L, N, I):
     return (mu_0 * N / L * I / 2) * (term_plus - term_minus)
 
 def F_z(z, R, L, N, I, r_ball):
-    """Axial force on an iron sphere (mu_r >> 1)."""
     mu_0 = 4 * np.pi * 1e-7 * u.H / u.m
     V_ball = (4 / 3) * np.pi * r_ball**3
     B = B_z(z, R, L, N, I)
@@ -235,11 +230,10 @@ def F_z(z, R, L, N, I, r_ball):
     return (3 * V_ball / (2 * mu_0)) * B * dB
 
 def work_on_ball(z_0, r_ball, R, L, N, I):
-    """Work done on iron ball when field switches on at z_0 - r_ball and off at z_0 + r_ball."""
     mu_0 = 4 * np.pi * 1e-7 * u.H / u.m
     V_ball = (4 / 3) * np.pi * r_ball**3
-    z1 = z_0 - r_ball  # field turns on
-    z2 = z_0 + r_ball  # field turns off
+    z1 = z_0 - r_ball  
+    z2 = z_0 + r_ball  
     B1 = B_z(z1, R, L, N, I)
     B2 = B_z(z2, R, L, N, I)
     return (3 * V_ball / (4 * mu_0)) * (B2**2 - B1**2)
@@ -261,35 +255,35 @@ v_f = np.sqrt(2 * KE_f / m_ball)
 st.header("3. Iron Ball & Switch Configuration")
 col1, col2, col3 = st.columns(3)
 col1.metric("Ball Volume", f"{V_ball.to(u.mm**3).magnitude:.0f} mm³")
-col1.caption("$\\frac{4}{3}\\pi r_{ball}^3$")
+col1.caption(f"(4/3) × π × {r_ball_val:.1f}³ mm³")
 
 col2.metric("Ball Mass", f"{m_ball.to(u.g).magnitude:.2f} g")
-col2.caption("$\\rho_{iron} \\cdot V_{ball}$")
+col2.caption(f"7.874 g/cm³ × {V_ball.to(u.cm**3).magnitude:.3f} cm³")
 
 col3.metric("B at Center", f"{B_0.to(u.mT).magnitude:.1f} mT")
-col3.caption("$\\text{Biot-Savart (center)}$")
+col3.caption("Biot-Savart field at z=0")
 
 
 col1, col2, col3 = st.columns(3)
 col1.metric("Field ON at z", f"{(z_0 - r_ball).to(u.mm).magnitude:.1f} mm")
-col1.caption("$z_0 - r_{ball}$")
+col1.caption(f"{z0_val:.1f} mm - {r_ball_val:.1f} mm")
 
 col2.metric("Field OFF at z", f"{(z_0 + r_ball).to(u.mm).magnitude:.1f} mm")
-col2.caption("$z_0 + r_{ball}$")
+col2.caption(f"{z0_val:.1f} mm + {r_ball_val:.1f} mm")
 
 col3.metric("Work done on ball", f"{W.to(u.mJ).magnitude:.2f} mJ")
-col3.caption("$\\int F_z dz$")
+col3.caption(f"∫ F_z dz ({z0_val - r_ball_val:.1f} to {z0_val + r_ball_val:.1f})")
 
 
 col1, col2, col3 = st.columns(3)
 col1.metric("Initial Velocity", f"{v_0.to(u.mm/u.s).magnitude:.0f} mm/s")
-col1.caption("$\\text{Assumed } 0$")
+col1.caption("Assumed 0 mm/s")
 
 col2.metric("Final Velocity", f"{v_f.to(u.mm/u.s).magnitude:.0f} mm/s")
-col2.caption("$\\sqrt{\\frac{2(KE_0 + W)}{m_{ball}}}$")
+col2.caption(f"√ (2 × {W.to(u.mJ).magnitude:.2f} mJ / {m_ball.to(u.g).magnitude:.2f} g)")
 
 col3.metric("Final Velocity (km/h)", f"{v_f.to(u.km/u.h).magnitude:.2f} km/h")
-col3.caption("$\\text{Unit Conversion}$")
+col3.caption(f"{v_f.to(u.m/u.s).magnitude:.2f} m/s × 3.6")
 
 
 # --- 4. CYCLOTRON SYSTEM & DUTY CYCLE ---
@@ -305,37 +299,33 @@ j_rms = j * np.sqrt(duty_cycle_decimal)
 
 col1, col2, col3 = st.columns(3)
 col1.metric("Distance ON per cycle", f"{dist_on_val:.1f} mm")
-col1.caption("$2 \\cdot r_{ball}$")
+col1.caption(f"2 × {r_ball_val:.1f} mm")
 
 col2.metric("Individual Coil Duty Cycle", f"{duty_cycle_pct:.2f} %")
-col2.caption("$\\frac{Dist_{ON}}{Circumference}$")
+col2.caption(f"{dist_on_val:.1f} mm / {track_circ_val:.4f} mm")
 
 col3.metric("Total System Duty Cycle", f"{duty_cycle_pct * n_coils_val:.2f} %")
-col3.caption("$\\text{Duty} \\cdot N_{coils}$")
+col3.caption(f"{duty_cycle_pct:.2f}% × {n_coils_val} coils")
 
 
 col1, col2, col3 = st.columns(3)
 col1.metric("RMS Current Density (j_rms)", f"{j_rms.to(u.A/u.mm**2).magnitude:.2f} A/mm²")
-col1.caption("$j \\cdot \\sqrt{\\text{Duty}}$")
+col1.caption(f"{j.to(u.A/u.mm**2).magnitude:.2f} A/mm² × √({duty_cycle_decimal:.4f})")
 
 col2.metric("Avg Power (Per Coil)", f"{P_avg.to(u.W).magnitude:.2f} W")
-col2.caption("$P \\cdot \\text{Duty}$")
+col2.caption(f"{P.magnitude:.1f} W × {duty_cycle_decimal:.4f}")
 
 col3.metric("Avg Power (All Coils Combined)", f"{P_sys_avg.to(u.W).magnitude:.2f} W")
-col3.caption("$P_{avg} \\cdot N_{coils}$")
-
-st.info(f"💡 **Thermal Impact Analysis:** Because the {r_ball_val * 2:.1f}mm ball strictly dictates the ON time, each individual coil rests for **{100 - duty_cycle_pct:.1f}%** of the ball's lap. Notice how drastically the **RMS Current Density** drops compared to your Peak Current Density! This tells you that for continuous cyclotron operation, thermal runaway is extremely unlikely, even if you are pulsing massive amounts of Peak Power.")
+col3.caption(f"{P_avg.to(u.W).magnitude:.2f} W × {n_coils_val} coils")
 
 
 # --- 5. INDUCTANCE ---
 def nagaoka_coefficient(R, L):
-    """Nagaoka coefficient for finite solenoid."""
     k = 2 * R / L 
     K = 1 / (1 + 0.9 * R / L - 0.02 * (R / L)**2 + 0.01 * (R / L)**3)
     return K.to(u.dimensionless).magnitude
 
 def solenoid_inductance(N, R, L):
-    """Inductance of a finite solenoid."""
     mu_0 = 4 * np.pi * 1e-7 * u.H / u.m
     K = nagaoka_coefficient(R, L)
     return mu_0 * N**2 * np.pi * R**2 * K / L
@@ -348,25 +338,24 @@ t_on = (2 * r_ball / v_f).to(u.ms)
 st.header("5. Inductance & Time Constant")
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Nagaoka Coeff (K)", f"{nagaoka_coefficient(R_eff, L):.2f}")
-col1.caption("$f(R_{eff}, L)$")
+col1.caption(f"f(R_eff={R_eff.to(u.mm).magnitude:.1f}mm, L={L_val:.1f}mm)")
 
 col2.metric("Resistance", f"{R_coil.to(u.ohm).magnitude:.1f} Ω")
-col2.caption("$\\frac{\\rho \\cdot l_{total}}{A_{cu}}$")
+col2.caption(f"1.68e-8 Ω·m × {total_length.to(u.m).magnitude:.2f} m / {A_cu.to(u.mm**2).magnitude:.4f} mm²")
 
 col3.metric("Inductance", f"{L_coil.to(u.mH).magnitude:.1f} mH")
-col3.caption("$\\frac{\\mu_0 N^2 \\pi R_{eff}^2 K}{L}$")
+col3.caption(f"(μ₀ × {N.to(u.dimensionless).magnitude:.0f}² × π × {R_eff.to(u.mm).magnitude:.1f}² × {nagaoka_coefficient(R_eff, L):.2f}) / {L_val:.1f} mm")
 
 col4.metric("Time Constant (τ)", f"{tau.to(u.ms).magnitude:.1f} ms")
-col4.caption("$\\frac{L_{coil}}{R_{coil}}$")
+col4.caption(f"{L_coil.to(u.mH).magnitude:.2f} mH / {R_coil.to(u.ohm).magnitude:.2f} Ω")
 
 st.write(f"**Estimated ON time (First kick):** {t_on.magnitude:.4f} ms")
-st.caption("$\\text{Derived from: } \\frac{2 \\cdot r_{ball}}{v_f}$")
+st.caption(f"2 × {r_ball_val:.1f} mm / {v_f.to(u.mm/u.s).magnitude:.0f} mm/s")
 
 
 # --- 6. MAGNETIC FIELD PLOT ---
 st.header("6. On-axis Magnetic Field Profile")
 
-# Generate data arrays for the plot
 z_vals_field = np.linspace(-L_val * 2.5, L_val * 2.5, 300) * u.mm
 z_plot_mm = z_vals_field.m_as(u.mm)
 B_plot = B_z(z_vals_field, R_eff, L, N, I).m_as(u.mT)
@@ -390,28 +379,23 @@ st.pyplot(fig_field)
 # --- 7. COMBINED PLOTTING ---
 st.header("7. Combined Field and Force Profiles")
 
-# Generate range from -2L to +2L for z-axis
 z_vals = np.linspace(-L_val*2, L_val*2, 200) * u.mm
 
-# Calculate B_z and F_z over the z range
 B_vals = B_z(z_vals, R_eff, L, N, I).to(u.mT).magnitude
 F_vals = F_z(z_vals, R_eff, L, N, I, r_ball).to(u.mN).magnitude
 
 fig, ax1 = plt.subplots(figsize=(10, 5))
 
-# Plot B_z
 ax1.set_xlabel('Position z (mm)')
 ax1.set_ylabel('Magnetic Field B_z (mT)', color='tab:blue')
 ax1.plot(z_vals.magnitude, B_vals, color='tab:blue', label='B_z')
 ax1.tick_params(axis='y', labelcolor='tab:blue')
 ax1.grid(True, alpha=0.3)
 
-# Indicate the Switch ON/OFF region
 z_on_mag = (z_0 - r_ball).to(u.mm).magnitude
 z_off_mag = (z_0 + r_ball).to(u.mm).magnitude
 ax1.axvspan(z_on_mag, z_off_mag, color='orange', alpha=0.2, label='Coil ON Region (Work Integration)')
 
-# Plot F_z on a secondary y-axis
 ax2 = ax1.twinx()
 ax2.set_ylabel('Axial Force F_z (mN)', color='tab:red')
 ax2.plot(z_vals.magnitude, F_vals, color='tab:red', linestyle='--', label='F_z')
@@ -430,50 +414,24 @@ fig2, ax3 = plt.subplots(figsize=(8, 5))
 r_ball_mm = r_ball.to(u.mm).magnitude
 z_0_mm = z_0.to(u.mm).magnitude
 
-# Calculate switch positions for the plot
 z_on = (z_0 - r_ball).to(u.mm).magnitude
 z_off = (z_0 + r_ball).to(u.mm).magnitude
 
 # Upper coil cross-section
-coil_upper = mpl.patches.Rectangle(
-    (-L_mm / 2, a_mm),
-    L_mm,
-    b_mm - a_mm,
-    facecolor='orange',
-    edgecolor='black',
-    linewidth=1.5,
-    label='Coil'
-)
+coil_upper = mpl.patches.Rectangle((-L_mm / 2, a_mm), L_mm, b_mm - a_mm, facecolor='orange', edgecolor='black', linewidth=1.5, label='Coil')
 ax3.add_patch(coil_upper)
 
-# Lower coil cross-section (mirror)
-coil_lower = mpl.patches.Rectangle(
-    (-L_mm / 2, -b_mm),
-    L_mm,
-    b_mm - a_mm,
-    facecolor='orange',
-    edgecolor='black',
-    linewidth=1.5
-)
+# Lower coil cross-section
+coil_lower = mpl.patches.Rectangle((-L_mm / 2, -b_mm), L_mm, b_mm - a_mm, facecolor='orange', edgecolor='black', linewidth=1.5)
 ax3.add_patch(coil_lower)
 
-# Iron ball at switch position
-ball = mpl.patches.Circle(
-    (z_0_mm, 0),
-    r_ball_mm,
-    facecolor='gray',
-    edgecolor='black',
-    linewidth=1.5,
-    label='Iron ball'
-)
+# Iron ball
+ball = mpl.patches.Circle((z_0_mm, 0), r_ball_mm, facecolor='gray', edgecolor='black', linewidth=1.5, label='Iron ball')
 ax3.add_patch(ball)
 
-# Mark switch positions
 ax3.axvline(z_on, color='g', linestyle='--', label='Field on')
 ax3.axvline(z_off, color='r', linestyle='--', label='Field off')
 ax3.axvline(z_0.m_as(u.mm), color='k', linestyle=':', label='Sensor')
-
-# Axis line
 ax3.axhline(0, color='k', linestyle='-', linewidth=0.5)
 
 ax3.set_xlim(-50, 50)
