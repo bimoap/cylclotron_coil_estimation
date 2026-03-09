@@ -97,7 +97,6 @@ if calc_mode == "By Current Density":
 else:
     b = b_val * u.mm
     # Calculate current density j based on chosen b
-    # Rearranged from: b^2 = a^2 + (V * A_total) / (j * rho * f * pi * L)
     j_raw = (V * A_total) / ((b**2 - a**2) * rho * f * np.pi * L)
     j = j_raw.to(u.A / u.mm**2)
 
@@ -113,21 +112,50 @@ m_wire = rho_cu * A_cu * l_bar * N         # Mass is calculated from bare copper
 st.header("1. Coil Geometry & Derived Quantities")
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Bare Cu Diameter", f"{d_cu.to(u.mm).magnitude:.3f} mm")
+col1.caption("$\\text{AWG Standard: } 0.127 \\times 92^{\\frac{36-n}{39}}$")
+
 col2.metric("Total Wire Dia.", f"{d_total.to(u.mm).magnitude:.3f} mm")
+col2.caption("$d_{cu} + 2t_{enamel}$")
+
 col3.metric("Outer Radius (b)", f"{b.to(u.mm).magnitude:.2f} mm")
+if calc_mode == "By Current Density":
+    col3.caption("$\\sqrt{a^2 + \\frac{V \\cdot A_{total}}{j \\cdot \\rho \\cdot f \\cdot \\pi \\cdot L}}$")
+else:
+    col3.caption("$\\text{User Input}$")
+
 col4.metric("Radial Build", f"{(b - a).to(u.mm).magnitude:.2f} mm")
+col4.caption("$b - a$")
+
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Mean Turn Length", f"{l_bar.to(u.mm).magnitude:.1f} mm")
+col1.caption("$\\pi(a + b)$")
+
 col2.metric("Number of Turns", f"{N.to(u.dimensionless).magnitude:.0f}")
+col2.caption("$\\frac{V}{j \\cdot \\rho \\cdot l_{bar}}$")
+
 col3.metric("Wire Length", f"{total_length.to(u.m).magnitude:.0f} m")
+col3.caption("$N \\cdot l_{bar}$")
+
 col4.metric("Cu Wire Mass", f"{m_wire.to(u.g).magnitude:.0f} g")
+col4.caption("$\\rho_{cu} \\cdot A_{cu} \\cdot l_{bar} \\cdot N$")
+
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Current", f"{I.to(u.A).magnitude:.3f} A")
+col1.caption("$j \\cdot A_{cu}$")
+
 col2.metric("Peak Power", f"{P.magnitude:.1f} W")
+col2.caption("$I \\cdot V$")
+
 col3.metric("Peak Current Density (j)", f"{j.to(u.A/u.mm**2).magnitude:.2f} A/mm²")
+if calc_mode == "By Current Density":
+    col3.caption("$\\text{User Input}$")
+else:
+    col3.caption("$\\frac{V \\cdot A_{total}}{(b^2 - a^2) \\rho f \\pi L}$")
+
 col4.metric("Ampere-Turns (NI)", f"{NI.to(u.A).magnitude:.0f} AT")
+col4.caption("$N \\cdot I$")
 
 
 # --- 2. SPOOL & COIL VISUALIZATION ---
@@ -233,24 +261,40 @@ v_f = np.sqrt(2 * KE_f / m_ball)
 st.header("3. Iron Ball & Switch Configuration")
 col1, col2, col3 = st.columns(3)
 col1.metric("Ball Volume", f"{V_ball.to(u.mm**3).magnitude:.0f} mm³")
+col1.caption("$\\frac{4}{3}\\pi r_{ball}^3$")
+
 col2.metric("Ball Mass", f"{m_ball.to(u.g).magnitude:.2f} g")
+col2.caption("$\\rho_{iron} \\cdot V_{ball}$")
+
 col3.metric("B at Center", f"{B_0.to(u.mT).magnitude:.1f} mT")
+col3.caption("$\\text{Biot-Savart (center)}$")
+
 
 col1, col2, col3 = st.columns(3)
 col1.metric("Field ON at z", f"{(z_0 - r_ball).to(u.mm).magnitude:.1f} mm")
+col1.caption("$z_0 - r_{ball}$")
+
 col2.metric("Field OFF at z", f"{(z_0 + r_ball).to(u.mm).magnitude:.1f} mm")
+col2.caption("$z_0 + r_{ball}$")
+
 col3.metric("Work done on ball", f"{W.to(u.mJ).magnitude:.2f} mJ")
+col3.caption("$\\int F_z dz$")
+
 
 col1, col2, col3 = st.columns(3)
 col1.metric("Initial Velocity", f"{v_0.to(u.mm/u.s).magnitude:.0f} mm/s")
+col1.caption("$\\text{Assumed } 0$")
+
 col2.metric("Final Velocity", f"{v_f.to(u.mm/u.s).magnitude:.0f} mm/s")
+col2.caption("$\\sqrt{\\frac{2(KE_0 + W)}{m_{ball}}}$")
+
 col3.metric("Final Velocity (km/h)", f"{v_f.to(u.km/u.h).magnitude:.2f} km/h")
+col3.caption("$\\text{Unit Conversion}$")
 
 
 # --- 4. CYCLOTRON SYSTEM & DUTY CYCLE ---
 st.header("4. Cyclotron System & Duty Cycle")
 
-# Distance ON equals the diameter of the ball because the point sensor reads from leading edge to trailing edge
 dist_on_val = 2 * r_ball_val 
 duty_cycle_decimal = dist_on_val / track_circ_val
 duty_cycle_pct = duty_cycle_decimal * 100
@@ -261,13 +305,24 @@ j_rms = j * np.sqrt(duty_cycle_decimal)
 
 col1, col2, col3 = st.columns(3)
 col1.metric("Distance ON per cycle", f"{dist_on_val:.1f} mm")
+col1.caption("$2 \\cdot r_{ball}$")
+
 col2.metric("Individual Coil Duty Cycle", f"{duty_cycle_pct:.2f} %")
+col2.caption("$\\frac{Dist_{ON}}{Circumference}$")
+
 col3.metric("Total System Duty Cycle", f"{duty_cycle_pct * n_coils_val:.2f} %")
+col3.caption("$\\text{Duty} \\cdot N_{coils}$")
+
 
 col1, col2, col3 = st.columns(3)
 col1.metric("RMS Current Density (j_rms)", f"{j_rms.to(u.A/u.mm**2).magnitude:.2f} A/mm²")
+col1.caption("$j \\cdot \\sqrt{\\text{Duty}}$")
+
 col2.metric("Avg Power (Per Coil)", f"{P_avg.to(u.W).magnitude:.2f} W")
+col2.caption("$P \\cdot \\text{Duty}$")
+
 col3.metric("Avg Power (All Coils Combined)", f"{P_sys_avg.to(u.W).magnitude:.2f} W")
+col3.caption("$P_{avg} \\cdot N_{coils}$")
 
 st.info(f"💡 **Thermal Impact Analysis:** Because the {r_ball_val * 2:.1f}mm ball strictly dictates the ON time, each individual coil rests for **{100 - duty_cycle_pct:.1f}%** of the ball's lap. Notice how drastically the **RMS Current Density** drops compared to your Peak Current Density! This tells you that for continuous cyclotron operation, thermal runaway is extremely unlikely, even if you are pulsing massive amounts of Peak Power.")
 
@@ -285,7 +340,7 @@ def solenoid_inductance(N, R, L):
     K = nagaoka_coefficient(R, L)
     return mu_0 * N**2 * np.pi * R**2 * K / L
 
-R_coil = rho * total_length / A_cu         # Resistance calculation strictly uses bare Cu
+R_coil = rho * total_length / A_cu         
 L_coil = solenoid_inductance(N, R_eff, L)
 tau = L_coil / R_coil
 t_on = (2 * r_ball / v_f).to(u.ms)
@@ -293,10 +348,19 @@ t_on = (2 * r_ball / v_f).to(u.ms)
 st.header("5. Inductance & Time Constant")
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Nagaoka Coeff (K)", f"{nagaoka_coefficient(R_eff, L):.2f}")
+col1.caption("$f(R_{eff}, L)$")
+
 col2.metric("Resistance", f"{R_coil.to(u.ohm).magnitude:.1f} Ω")
+col2.caption("$\\frac{\\rho \\cdot l_{total}}{A_{cu}}$")
+
 col3.metric("Inductance", f"{L_coil.to(u.mH).magnitude:.1f} mH")
+col3.caption("$\\frac{\\mu_0 N^2 \\pi R_{eff}^2 K}{L}$")
+
 col4.metric("Time Constant (τ)", f"{tau.to(u.ms).magnitude:.1f} ms")
+col4.caption("$\\frac{L_{coil}}{R_{coil}}$")
+
 st.write(f"**Estimated ON time (First kick):** {t_on.magnitude:.4f} ms")
+st.caption("$\\text{Derived from: } \\frac{2 \\cdot r_{ball}}{v_f}$")
 
 
 # --- 6. MAGNETIC FIELD PLOT ---
