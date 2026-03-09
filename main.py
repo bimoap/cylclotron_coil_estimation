@@ -1,5 +1,6 @@
 import streamlit as st
 import numpy as np
+import matplotlib.subplots as plt_sub
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import pint
@@ -46,16 +47,27 @@ st.sidebar.caption(f"*(Theoretical orthocyclic max for AWG {awg}: **{f_cu_defaul
 V_val = st.sidebar.number_input("Voltage (V)", value=12.0)
 a_val = st.sidebar.number_input("Inner Radius 'a' (mm)", value=12.5)
 L_val = st.sidebar.number_input("Solenoid Length 'L' (mm)", value=20.0)
-j_val = st.sidebar.number_input("Current Density (A/mm²)", value=4.0)
+
+# --- NEW: CALCULATION MODE ---
+st.sidebar.markdown("---")
+calc_mode = st.sidebar.radio("Calculation Mode", ["By Current Density", "By Outer Radius"])
+
+if calc_mode == "By Current Density":
+    j_val = st.sidebar.number_input("Current Density (A/mm²)", value=4.0)
+    b_val = None
+else:
+    b_val = st.sidebar.number_input("Outer Radius 'b' (mm)", value=25.0)
+    j_val = None
+
+st.sidebar.markdown("---")
 r_ball_val = st.sidebar.number_input("Iron Ball Radius (mm)", value=6.0)
 z0_val = st.sidebar.number_input("Switch Position z_0 (mm)", value=-12.0)
 
-# --- APPLY UNITS ---
+# --- APPLY UNITS & CONSTANTS ---
 V = V_val * u.V
 a = a_val * u.mm
 L = L_val * u.mm
 f = f_val
-j = j_val * u.A / u.mm**2
 r_ball = r_ball_val * u.mm
 z_0 = z0_val * u.mm
 t_enamel = t_enamel_mm * u.mm
@@ -71,8 +83,17 @@ d_total = d_total_val * u.mm
 A_cu = np.pi * (d_cu / 2) ** 2             
 A_total = np.pi * (d_total / 2) ** 2       
 
-# Calculate outer radius b using the BARE copper area and the Copper Fill Factor
-b = np.sqrt(a**2 + (V * A_cu) / (j * rho * f * np.pi * L))
+# --- CORE CALCULATION BASED ON SELECTED MODE ---
+if calc_mode == "By Current Density":
+    j = j_val * u.A / u.mm**2
+    # Calculate outer radius b
+    b = np.sqrt(a**2 + (V * A_total) / (j * rho * f * np.pi * L))
+else:
+    b = b_val * u.mm
+    # Calculate current density j based on chosen b
+    # Rearranged from: b^2 = a^2 + (V * A_total) / (j * rho * f * pi * L)
+    j_raw = (V * A_total) / ((b**2 - a**2) * rho * f * np.pi * L)
+    j = j_raw.to(u.A / u.mm**2)
 
 # --- DERIVED QUANTITIES ---
 l_bar = np.pi * (a + b)
@@ -98,6 +119,7 @@ col4.metric("Cu Wire Mass", f"{m_wire.to(u.g).magnitude:.0f} g")
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Current", f"{I.to(u.A).magnitude:.3f} A")
 col2.metric("Power", f"{P.magnitude:.1f} W")
+col3.metric("Current Density (j)", f"{j.to(u.A/u.mm**2).magnitude:.2f} A/mm²")
 
 
 # --- 2. SPOOL & COIL VISUALIZATION ---
