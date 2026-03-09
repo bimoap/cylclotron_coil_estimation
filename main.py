@@ -98,6 +98,7 @@ else:
 l_bar = np.pi * (a + b)
 N = V / (j * rho * l_bar)
 I = j * A_cu                               # Current is driven through bare copper
+NI = N * I                                 # Ampere-Turns
 total_length = N * l_bar
 P = (I * V).to(u.W)
 m_wire = rho_cu * A_cu * l_bar * N         # Mass is calculated from bare copper volume
@@ -119,6 +120,7 @@ col1, col2, col3, col4 = st.columns(4)
 col1.metric("Current", f"{I.to(u.A).magnitude:.3f} A")
 col2.metric("Power", f"{P.magnitude:.1f} W")
 col3.metric("Current Density (j)", f"{j.to(u.A/u.mm**2).magnitude:.2f} A/mm²")
+col4.metric("Ampere-Turns (NI)", f"{NI.to(u.A).magnitude:.0f} AT")
 
 
 # --- 2. SPOOL & COIL VISUALIZATION ---
