@@ -58,7 +58,14 @@ else:
     b_val = st.sidebar.number_input("Outer Radius 'b' (mm)", value=28.0)
     j_val = None
 
+# --- NEW: CYCLOTRON SETTINGS ---
 st.sidebar.markdown("---")
+st.sidebar.subheader("Cyclotron Settings")
+track_circ_val = st.sidebar.number_input("Track Circumference (mm)", value=596.9026, format="%.4f")
+n_coils_val = st.sidebar.number_input("Number of Coils", value=6, min_value=1, step=1)
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("Projectile Settings")
 r_ball_val = st.sidebar.number_input("Iron Ball Radius (mm)", value=6.0)
 z0_val = st.sidebar.number_input("Switch Position z_0 (mm)", value=-12.0)
 
@@ -118,8 +125,8 @@ col4.metric("Cu Wire Mass", f"{m_wire.to(u.g).magnitude:.0f} g")
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Current", f"{I.to(u.A).magnitude:.3f} A")
-col2.metric("Power", f"{P.magnitude:.1f} W")
-col3.metric("Current Density (j)", f"{j.to(u.A/u.mm**2).magnitude:.2f} A/mm²")
+col2.metric("Peak Power", f"{P.magnitude:.1f} W")
+col3.metric("Peak Current Density (j)", f"{j.to(u.A/u.mm**2).magnitude:.2f} A/mm²")
 col4.metric("Ampere-Turns (NI)", f"{NI.to(u.A).magnitude:.0f} AT")
 
 
@@ -240,7 +247,32 @@ col2.metric("Final Velocity", f"{v_f.to(u.mm/u.s).magnitude:.0f} mm/s")
 col3.metric("Final Velocity (km/h)", f"{v_f.to(u.km/u.h).magnitude:.2f} km/h")
 
 
-# --- 4. INDUCTANCE ---
+# --- 4. CYCLOTRON SYSTEM & DUTY CYCLE ---
+st.header("4. Cyclotron System & Duty Cycle")
+
+# Distance ON equals the diameter of the ball because the point sensor reads from leading edge to trailing edge
+dist_on_val = 2 * r_ball_val 
+duty_cycle_decimal = dist_on_val / track_circ_val
+duty_cycle_pct = duty_cycle_decimal * 100
+
+P_avg = P * duty_cycle_decimal
+P_sys_avg = P_avg * n_coils_val
+j_rms = j * np.sqrt(duty_cycle_decimal)
+
+col1, col2, col3 = st.columns(3)
+col1.metric("Distance ON per cycle", f"{dist_on_val:.1f} mm")
+col2.metric("Individual Coil Duty Cycle", f"{duty_cycle_pct:.2f} %")
+col3.metric("Total System Duty Cycle", f"{duty_cycle_pct * n_coils_val:.2f} %")
+
+col1, col2, col3 = st.columns(3)
+col1.metric("RMS Current Density (j_rms)", f"{j_rms.to(u.A/u.mm**2).magnitude:.2f} A/mm²")
+col2.metric("Avg Power (Per Coil)", f"{P_avg.to(u.W).magnitude:.2f} W")
+col3.metric("Avg Power (All Coils Combined)", f"{P_sys_avg.to(u.W).magnitude:.2f} W")
+
+st.info(f"💡 **Thermal Impact Analysis:** Because the {r_ball_val * 2:.1f}mm ball strictly dictates the ON time, each individual coil rests for **{100 - duty_cycle_pct:.1f}%** of the ball's lap. Notice how drastically the **RMS Current Density** drops compared to your Peak Current Density! This tells you that for continuous cyclotron operation, thermal runaway is extremely unlikely, even if you are pulsing massive amounts of Peak Power.")
+
+
+# --- 5. INDUCTANCE ---
 def nagaoka_coefficient(R, L):
     """Nagaoka coefficient for finite solenoid."""
     k = 2 * R / L 
@@ -258,17 +290,17 @@ L_coil = solenoid_inductance(N, R_eff, L)
 tau = L_coil / R_coil
 t_on = (2 * r_ball / v_f).to(u.ms)
 
-st.header("4. Inductance & Time Constant")
+st.header("5. Inductance & Time Constant")
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Nagaoka Coeff (K)", f"{nagaoka_coefficient(R_eff, L):.2f}")
 col2.metric("Resistance", f"{R_coil.to(u.ohm).magnitude:.1f} Ω")
 col3.metric("Inductance", f"{L_coil.to(u.mH).magnitude:.1f} mH")
 col4.metric("Time Constant (τ)", f"{tau.to(u.ms).magnitude:.1f} ms")
-st.write(f"**Estimated ON time:** {t_on.magnitude:.4f} ms")
+st.write(f"**Estimated ON time (First kick):** {t_on.magnitude:.4f} ms")
 
 
-# --- 5. MAGNETIC FIELD PLOT ---
-st.header("5. On-axis Magnetic Field Profile")
+# --- 6. MAGNETIC FIELD PLOT ---
+st.header("6. On-axis Magnetic Field Profile")
 
 # Generate data arrays for the plot
 z_vals_field = np.linspace(-L_val * 2.5, L_val * 2.5, 300) * u.mm
@@ -291,8 +323,8 @@ fig_field.tight_layout()
 st.pyplot(fig_field)
 
 
-# --- 6. COMBINED PLOTTING ---
-st.header("6. Combined Field and Force Profiles")
+# --- 7. COMBINED PLOTTING ---
+st.header("7. Combined Field and Force Profiles")
 
 # Generate range from -2L to +2L for z-axis
 z_vals = np.linspace(-L_val*2, L_val*2, 200) * u.mm
@@ -326,8 +358,8 @@ fig.tight_layout()
 st.pyplot(fig)
 
 
-# --- 7. SOLENOID SYSTEM CROSS-SECTION PLOT ---
-st.header("7. Solenoid System Cross-Section")
+# --- 8. SOLENOID SYSTEM CROSS-SECTION PLOT ---
+st.header("8. Solenoid System Cross-Section")
 
 fig2, ax3 = plt.subplots(figsize=(8, 5))
 
