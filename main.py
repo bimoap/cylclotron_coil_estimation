@@ -415,7 +415,7 @@ st.pyplot(fig)
 st.header("8. Snubber Effect & Suck-Back Analysis (Force Decay)")
 
 # Generate positions specifically showing the switch-off region and beyond
-z_sb = np.linspace(-L_val.magnitude*1.5, L_val.magnitude*2.5, 400) * u.mm
+z_sb = np.linspace(-L_val * 1.5, L_val * 2.5, 400) * u.mm
 z_on_mag = (z_0 - r_ball).to(u.mm).magnitude
 z_off_mag = (z_0 + r_ball).to(u.mm).magnitude
 
