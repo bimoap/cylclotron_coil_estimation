@@ -1,5 +1,6 @@
 import streamlit as st
 import numpy as np
+import matplotlib.subplots as plt_sub
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import pint
@@ -49,13 +50,15 @@ L_val = st.sidebar.number_input("Solenoid Length 'L' (mm)", value=20.0)
 
 # --- NEW: CALCULATION MODE ---
 st.sidebar.markdown("---")
-calc_mode = st.sidebar.radio("Calculation Mode", ["By Current Density", "By Outer Radius"])
+# Changed default index to 1 ("By Outer Radius")
+calc_mode = st.sidebar.radio("Calculation Mode", ["By Current Density", "By Outer Radius"], index=1)
 
 if calc_mode == "By Current Density":
     j_val = st.sidebar.number_input("Current Density (A/mm²)", value=4.0)
     b_val = None
 else:
-    b_val = st.sidebar.number_input("Outer Radius 'b' (mm)", value=28.0)
+    # Changed default Outer Radius to 31.5 mm
+    b_val = st.sidebar.number_input("Outer Radius 'b' (mm)", value=31.5)
     j_val = None
 
 # --- NEW: CYCLOTRON SETTINGS ---
