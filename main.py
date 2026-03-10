@@ -18,7 +18,8 @@ def awg_diameter(n):
 # --- SIDEBAR INPUTS ---
 st.sidebar.header("Input Parameters")
 
-awg = st.sidebar.number_input("Wire AWG", min_value=1, max_value=40, value=28, step=1)
+# Updated default AWG to 20
+awg = st.sidebar.number_input("Wire AWG", min_value=1, max_value=40, value=20, step=1)
 
 # Enamel Thickness Input (thou to mm conversion)
 t_enamel_thou = st.sidebar.number_input("Enamel Thickness (thou)", min_value=0.0, max_value=10.0, value=1.0, step=0.1)
@@ -49,14 +50,12 @@ L_val = st.sidebar.number_input("Solenoid Length 'L' (mm)", value=20.0)
 
 # --- NEW: CALCULATION MODE ---
 st.sidebar.markdown("---")
-# Changed default index to 1 ("By Outer Radius")
 calc_mode = st.sidebar.radio("Calculation Mode", ["By Current Density", "By Outer Radius"], index=1)
 
 if calc_mode == "By Current Density":
     j_val = st.sidebar.number_input("Current Density (A/mm²)", value=4.0)
     b_val = None
 else:
-    # Changed default Outer Radius to 31.5 mm
     b_val = st.sidebar.number_input("Outer Radius 'b' (mm)", value=31.5)
     j_val = None
 
