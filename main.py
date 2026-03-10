@@ -18,7 +18,6 @@ def awg_diameter(n):
 # --- SIDEBAR INPUTS ---
 st.sidebar.header("Input Parameters")
 
-# Updated default AWG to 20
 awg = st.sidebar.number_input("Wire AWG", min_value=1, max_value=40, value=20, step=1)
 
 # Enamel Thickness Input (thou to mm conversion)
@@ -59,11 +58,16 @@ else:
     b_val = st.sidebar.number_input("Outer Radius 'b' (mm)", value=31.5)
     j_val = None
 
-# --- NEW: CYCLOTRON SETTINGS ---
+# --- CYCLOTRON SETTINGS ---
 st.sidebar.markdown("---")
 st.sidebar.subheader("Cyclotron Settings")
 track_circ_val = st.sidebar.number_input("Track Circumference (mm)", value=596.9026, format="%.4f")
 n_coils_val = st.sidebar.number_input("Number of Coils", value=6, min_value=1, step=1)
+
+# --- SNUBBER SETTINGS ---
+st.sidebar.markdown("---")
+st.sidebar.subheader("Snubber Settings")
+V_tvs_val = st.sidebar.number_input("TVS / Zener Voltage (V)", value=33.0)
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("Projectile Settings")
@@ -78,6 +82,7 @@ f = f_val
 r_ball = r_ball_val * u.mm
 z_0 = z0_val * u.mm
 t_enamel = t_enamel_mm * u.mm
+V_tvs = V_tvs_val * u.V
 
 rho = 1.68e-8 * u.ohm * u.m  # copper resistivity
 rho_cu = 8.96 * u.g / u.cm**3
@@ -406,16 +411,75 @@ fig.tight_layout()
 st.pyplot(fig)
 
 
-# --- 8. SOLENOID SYSTEM CROSS-SECTION PLOT ---
-st.header("8. Solenoid System Cross-Section")
+# --- 8. SNUBBER EFFECT & SUCK-BACK ANALYSIS ---
+st.header("8. Snubber Effect & Suck-Back Analysis (Force Decay)")
+
+# Generate positions specifically showing the switch-off region and beyond
+z_sb = np.linspace(-L_val.magnitude*1.5, L_val.magnitude*2.5, 400) * u.mm
+z_on_mag = (z_0 - r_ball).to(u.mm).magnitude
+z_off_mag = (z_0 + r_ball).to(u.mm).magnitude
+
+# Calculate ratio of current decay over time, mapped to space via velocity
+I_ratio_ideal = np.zeros(len(z_sb))
+I_ratio_flyback = np.zeros(len(z_sb))
+I_ratio_zener = np.zeros(len(z_sb))
+
+for i, z_val in enumerate(z_sb):
+    z_m = z_val.to(u.mm).magnitude
+    if z_on_mag <= z_m <= z_off_mag:
+        I_ratio_ideal[i] = 1.0
+        I_ratio_flyback[i] = 1.0
+        I_ratio_zener[i] = 1.0
+    elif z_m > z_off_mag:
+        # Time since switch turned off
+        dt = (z_val - (z_0 + r_ball)) / v_f
+        
+        # 1. Flyback decay: I(t) = I0 * e^(-t/tau)
+        decay_fb = np.exp(-dt / tau).to(u.dimensionless).magnitude
+        I_ratio_flyback[i] = decay_fb
+        
+        # 2. TVS / Zener decay: I(t) = (I0 + Vz/R) * e^(-t/tau) - Vz/R
+        I_0_val = I
+        I_z_decay = ((I_0_val + V_tvs / R_coil) * np.exp(-dt / tau) - V_tvs / R_coil) / I_0_val
+        I_ratio_zener[i] = max(0.0, I_z_decay.to(u.dimensionless).magnitude)
+
+# Because Force is proportional to I^2, we calculate base force and scale it
+F_base = F_z(z_sb, R_eff, L, N, I, r_ball).to(u.mN).magnitude
+
+F_ideal = F_base * (I_ratio_ideal**2)
+F_flyback = F_base * (I_ratio_flyback**2)
+F_zener = F_base * (I_ratio_zener**2)
+
+fig_sb, ax_sb = plt.subplots(figsize=(10, 5))
+
+ax_sb.plot(z_sb.magnitude, F_ideal, 'g--', label='Ideal Switch (Instant Cutoff)', linewidth=2)
+ax_sb.plot(z_sb.magnitude, F_flyback, 'r-', label='Standard Flyback Diode (Slow Decay)', linewidth=2)
+ax_sb.plot(z_sb.magnitude, F_zener, 'b-', label=f'TVS Snubber ({V_tvs_val}V)', linewidth=2)
+
+# Highlight suck-back region
+ax_sb.axhspan(-max(abs(F_base)), 0, color='red', alpha=0.05, label='Suck-Back Region (Deceleration)')
+ax_sb.axvline(0, color='k', linestyle=':', label='Coil Center')
+ax_sb.axvline(z_off_mag, color='orange', linestyle='--', label='Switch OFF')
+
+ax_sb.set_xlabel('Position z (mm)')
+ax_sb.set_ylabel('Axial Force F_z (mN)')
+ax_sb.legend(loc='upper right')
+ax_sb.grid(True, alpha=0.3)
+ax_sb.set_title('Force Profile Decay & Suck-Back Effect (Mapped via Final Velocity)')
+
+fig_sb.tight_layout()
+st.pyplot(fig_sb)
+
+st.info("💡 **Understanding Suck-Back:** The force naturally becomes negative (pulling backwards) after the ball crosses the exact center of the coil ($z = 0$). If the coil's current decays too slowly (red line), the coil stays magnetized as the ball passes the center, dragging it backwards and stealing the kinetic energy you just added. The TVS Snubber (blue line) forces the current to zero much faster, virtually eliminating this deceleration drag.")
+
+
+# --- 9. SOLENOID SYSTEM CROSS-SECTION PLOT ---
+st.header("9. Solenoid System Cross-Section")
 
 fig2, ax3 = plt.subplots(figsize=(8, 5))
 
 r_ball_mm = r_ball.to(u.mm).magnitude
 z_0_mm = z_0.to(u.mm).magnitude
-
-z_on = (z_0 - r_ball).to(u.mm).magnitude
-z_off = (z_0 + r_ball).to(u.mm).magnitude
 
 # Upper coil cross-section
 coil_upper = mpl.patches.Rectangle((-L_mm / 2, a_mm), L_mm, b_mm - a_mm, facecolor='orange', edgecolor='black', linewidth=1.5, label='Coil')
@@ -429,8 +493,8 @@ ax3.add_patch(coil_lower)
 ball = mpl.patches.Circle((z_0_mm, 0), r_ball_mm, facecolor='gray', edgecolor='black', linewidth=1.5, label='Iron ball')
 ax3.add_patch(ball)
 
-ax3.axvline(z_on, color='g', linestyle='--', label='Field on')
-ax3.axvline(z_off, color='r', linestyle='--', label='Field off')
+ax3.axvline(z_on_mag, color='g', linestyle='--', label='Field on')
+ax3.axvline(z_off_mag, color='r', linestyle='--', label='Field off')
 ax3.axvline(z_0.m_as(u.mm), color='k', linestyle=':', label='Sensor')
 ax3.axhline(0, color='k', linestyle='-', linewidth=0.5)
 
