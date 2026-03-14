@@ -147,7 +147,7 @@ col1, col2, col3, col4 = st.columns(4)
 col1.metric("Bare Cu Diameter", f"{d_cu.to(u.mm).magnitude:.3f} mm")
 col1.caption(f"0.127 × 92^((36-{awg})/39)")
 
-col2.metric("Total Wire Dia.", f"{d_total.to(u.mm).magnitude:.3f} mm")
+col2.metric("Total Wire Dia. (Including enamel)", f"{d_total.to(u.mm).magnitude:.3f} mm")
 col2.caption(f"{d_cu.to(u.mm).magnitude:.3f} mm + 2({t_enamel_mm:.4f} mm)")
 
 col3.metric("Outer Radius (b)", f"{b.to(u.mm).magnitude:.2f} mm")
