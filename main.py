@@ -61,7 +61,25 @@ else:
 # --- CYCLOTRON SETTINGS ---
 st.sidebar.markdown("---")
 st.sidebar.subheader("Cyclotron Settings")
-track_circ_val = st.sidebar.number_input("Track Circumference (mm)", value=596.9026, format="%.4f")
+
+# Updated Track Input Logic
+track_input_mode = st.sidebar.radio("Define Track By:", ["Radius", "Diameter"])
+if track_input_mode == "Radius":
+    track_r_val = st.sidebar.number_input("Track Radius (mm)", value=95.0)
+    track_d_val = track_r_val * 2
+else:
+    track_d_val = st.sidebar.number_input("Track Diameter (mm)", value=190.0)
+    track_r_val = track_d_val / 2
+
+# Calculate final circumference based on diameter
+track_circ_val = np.pi * track_d_val
+
+# Display dynamic caption
+if track_input_mode == "Radius":
+    st.sidebar.caption(f"*(Diameter: **{track_d_val:.1f}** mm | Circumference: **{track_circ_val:.1f}** mm)*")
+else:
+    st.sidebar.caption(f"*(Radius: **{track_r_val:.1f}** mm | Circumference: **{track_circ_val:.1f}** mm)*")
+
 n_coils_val = st.sidebar.number_input("Number of Coils", value=6, min_value=1, step=1)
 
 # --- SNUBBER SETTINGS ---
@@ -184,15 +202,18 @@ P_avg = P * duty_cycle_decimal
 P_sys_avg = P_avg * n_coils_val
 j_rms = j * np.sqrt(duty_cycle_decimal)
 
-col1, col2, col3 = st.columns(3)
-col1.metric("Distance ON per cycle", f"{dist_on_val:.1f} mm")
-col1.caption(f"2 × {r_ball_val:.1f} mm")
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Track Circumference", f"{track_circ_val:.1f} mm")
+col1.caption(f"π × {track_d_val:.1f} mm")
 
-col2.metric("Individual Coil Duty Cycle", f"{duty_cycle_pct:.2f} %")
-col2.caption(f"{dist_on_val:.1f} mm / {track_circ_val:.4f} mm")
+col2.metric("Distance ON per cycle", f"{dist_on_val:.1f} mm")
+col2.caption(f"2 × {r_ball_val:.1f} mm")
 
-col3.metric("Total System Duty Cycle", f"{duty_cycle_pct * n_coils_val:.2f} %")
-col3.caption(f"{duty_cycle_pct:.2f}% × {n_coils_val} coils")
+col3.metric("Indiv. Coil Duty Cycle", f"{duty_cycle_pct:.2f} %")
+col3.caption(f"{dist_on_val:.1f} mm / {track_circ_val:.1f} mm")
+
+col4.metric("Total System Duty Cycle", f"{duty_cycle_pct * n_coils_val:.2f} %")
+col4.caption(f"{duty_cycle_pct:.2f}% × {n_coils_val} coils")
 
 
 col1, col2, col3 = st.columns(3)
