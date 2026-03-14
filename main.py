@@ -112,6 +112,7 @@ N = V / (j * rho * l_bar)
 I = j * A_cu                               
 NI = N * I                                 
 total_length = N * l_bar
+R_coil = rho * total_length / A_cu         # Moved up here to use in Current note
 P = (I * V).to(u.W)
 m_wire = rho_cu * A_cu * l_bar * N         
 
@@ -137,7 +138,6 @@ col1, col2, col3, col4 = st.columns(4)
 col1.metric("Mean Turn Length", f"{l_bar.to(u.mm).magnitude:.1f} mm")
 col1.caption(f"π × ({a_val:.2f} mm + {b.to(u.mm).magnitude:.2f} mm)")
 
-# Updated Number of Turns Caption based on Physical Window Geometry
 col2.metric("Number of Turns", f"{N.to(u.dimensionless).magnitude:.0f}")
 col2.caption(f"({f_val:.4f} × {L_val:.1f} mm × {(b.to(u.mm).magnitude - a_val):.2f} mm) / {A_total.to(u.mm**2).magnitude:.4f} mm²")
 
@@ -150,7 +150,8 @@ col4.caption(f"8.96 g/cm³ × {A_cu.to(u.cm**2).magnitude:.5f} cm² × {total_le
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Current", f"{I.to(u.A).magnitude:.3f} A")
-col1.caption(f"{j.to(u.A/u.mm**2).magnitude:.2f} A/mm² × {A_cu.to(u.mm**2).magnitude:.4f} mm²")
+# Updated Current Note to display Ohm's Law (V / R)
+col1.caption(f"{V_val:.1f} V / {R_coil.to(u.ohm).magnitude:.2f} Ω")
 
 col2.metric("Peak Power", f"{P.magnitude:.1f} W")
 col2.caption(f"{I.to(u.A).magnitude:.3f} A × {V_val:.1f} V")
@@ -336,7 +337,6 @@ def solenoid_inductance(N, R, L):
     K = nagaoka_coefficient(R, L)
     return mu_0 * N**2 * np.pi * R**2 * K / L
 
-R_coil = rho * total_length / A_cu         
 L_coil = solenoid_inductance(N, R_eff, L)
 tau = L_coil / R_coil
 t_on = (2 * r_ball / v_f).to(u.ms)
