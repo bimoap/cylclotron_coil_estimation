@@ -137,8 +137,9 @@ col1, col2, col3, col4 = st.columns(4)
 col1.metric("Mean Turn Length", f"{l_bar.to(u.mm).magnitude:.1f} mm")
 col1.caption(f"π × ({a_val:.2f} mm + {b.to(u.mm).magnitude:.2f} mm)")
 
+# Updated Number of Turns Caption based on Physical Window Geometry
 col2.metric("Number of Turns", f"{N.to(u.dimensionless).magnitude:.0f}")
-col2.caption(f"{V_val:.1f} V / ({j.to(u.A/u.mm**2).magnitude:.2f} A/mm² × 1.68e-8 Ω·m × {l_bar.to(u.m).magnitude:.4f} m)")
+col2.caption(f"({f_val:.4f} × {L_val:.1f} mm × {(b.to(u.mm).magnitude - a_val):.2f} mm) / {A_total.to(u.mm**2).magnitude:.4f} mm²")
 
 col3.metric("Wire Length", f"{total_length.to(u.m).magnitude:.0f} m")
 col3.caption(f"{N.to(u.dimensionless).magnitude:.0f} turns × {l_bar.to(u.mm).magnitude:.1f} mm")
