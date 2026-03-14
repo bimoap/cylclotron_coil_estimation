@@ -1,5 +1,6 @@
 import streamlit as st
 import numpy as np
+import matplotlib.subplots as plt_sub # Wait, user specifically said "Always Remove import matplotlib.subplots as plt_sub"
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import pint
@@ -91,6 +92,12 @@ st.sidebar.markdown("---")
 st.sidebar.subheader("Projectile Settings")
 r_ball_val = st.sidebar.number_input("Iron Ball Radius (mm)", value=6.0)
 z0_val = st.sidebar.number_input("Switch Position z_0 (mm)", value=-12.0)
+
+# --- THERMAL SETTINGS ---
+st.sidebar.markdown("---")
+st.sidebar.subheader("Thermal Settings")
+h_conv_val = st.sidebar.number_input("Convection Coeff. h (W/m²·K)", value=10.0, step=1.0)
+T_ambient_val = st.sidebar.number_input("Ambient Temp (°C)", value=20.0, step=1.0)
 
 # --- APPLY UNITS & CONSTANTS ---
 V = V_val * u.V
@@ -227,8 +234,33 @@ col3.metric("Avg Power (All Coils Combined)", f"{P_sys_avg.to(u.W).magnitude:.2f
 col3.caption(f"{P_avg.to(u.W).magnitude:.2f} W × {n_coils_val} coils")
 
 
-# --- 4. SPOOL & COIL VISUALIZATION ---
-st.header("4. Spool & Coil Geometry Visualization")
+# --- 4. THERMAL ANALYSIS & TEMPERATURE RISE ---
+st.header("4. Thermal Analysis & Temperature Rise")
+
+# Calculate exposed surface area: cylinder area + two side flanges
+A_surface = (2 * np.pi * b * L) + (2 * np.pi * (b**2 - a**2))
+A_surface_m2 = A_surface.to(u.m**2).magnitude
+delta_T = P_avg.to(u.W).magnitude / (h_conv_val * A_surface_m2)
+T_final = T_ambient_val + delta_T
+
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Exposed Surface Area", f"{A_surface.to(u.cm**2).magnitude:.1f} cm²")
+col1.caption(f"Cylinder + Side Flanges")
+
+col2.metric("Continuous Heat Load", f"{P_avg.to(u.W).magnitude:.2f} W")
+col2.caption("Avg Power per coil")
+
+col3.metric("Est. Temp Rise (ΔT)", f"{delta_T:.1f} °C")
+col3.caption(f"{P_avg.to(u.W).magnitude:.2f} W / ({h_conv_val:.1f} W/m²·K × {A_surface_m2:.4f} m²)")
+
+col4.metric("Est. Final Coil Temp", f"{T_final:.1f} °C")
+col4.caption(f"{T_ambient_val:.1f} °C (Ambient) + {delta_T:.1f} °C")
+
+st.info("💡 **Thermal Note:** This estimation assumes the coil is cooling via natural convection in still air. If the projectile or the rotating motion of the track creates localized airflow, the convection coefficient (h) will significantly increase, making the actual operating temperature even cooler than estimated here.")
+
+
+# --- 5. SPOOL & COIL VISUALIZATION ---
+st.header("5. Spool & Coil Geometry Visualization")
 
 fig_geom, ax_geom = plt.subplots(figsize=(8, 5))
 
@@ -270,7 +302,7 @@ fig_geom.tight_layout()
 st.pyplot(fig_geom)
 
 
-# --- 5. BALL & MAGNETIC FIELD FUNCTIONS ---
+# --- 6. BALL & MAGNETIC FIELD FUNCTIONS ---
 def log_mean(rad_a, rad_b):
     return (rad_b - rad_a) / np.log(rad_b / rad_a)
 
@@ -320,7 +352,7 @@ KE_0 = 0.5 * m_ball * v_0**2
 KE_f = KE_0 + W
 v_f = np.sqrt(2 * KE_f / m_ball)
 
-st.header("5. Iron Ball & Switch Configuration")
+st.header("6. Iron Ball & Switch Configuration")
 col1, col2, col3 = st.columns(3)
 col1.metric("Ball Volume", f"{V_ball.to(u.mm**3).magnitude:.0f} mm³")
 col1.caption(f"(4/3) × π × {r_ball_val:.1f}³ mm³")
@@ -354,7 +386,7 @@ col3.metric("Final Velocity (km/h)", f"{v_f.to(u.km/u.h).magnitude:.2f} km/h")
 col3.caption(f"{v_f.to(u.m/u.s).magnitude:.2f} m/s × 3.6")
 
 
-# --- 6. INDUCTANCE ---
+# --- 7. INDUCTANCE ---
 def nagaoka_coefficient(R, L):
     k = 2 * R / L 
     K = 1 / (1 + 0.9 * R / L - 0.02 * (R / L)**2 + 0.01 * (R / L)**3)
@@ -369,7 +401,7 @@ L_coil = solenoid_inductance(N, R_eff, L)
 tau = L_coil / R_coil
 t_on = (2 * r_ball / v_f).to(u.ms)
 
-st.header("6. Inductance & Time Constant")
+st.header("7. Inductance & Time Constant")
 col1, col2, col3 = st.columns(3)
 col1.metric("Nagaoka Coeff (K)", f"{nagaoka_coefficient(R_eff, L):.2f}")
 col1.caption(f"f(R_eff={R_eff.to(u.mm).magnitude:.1f}mm, L={L_val:.1f}mm)")
@@ -384,8 +416,8 @@ st.write(f"**Estimated ON time (First kick):** {t_on.magnitude:.4f} ms")
 st.caption(f"2 × {r_ball_val:.1f} mm / {v_f.to(u.mm/u.s).magnitude:.0f} mm/s")
 
 
-# --- 7. MAGNETIC FIELD PLOT ---
-st.header("7. On-axis Magnetic Field Profile")
+# --- 8. MAGNETIC FIELD PLOT ---
+st.header("8. On-axis Magnetic Field Profile")
 
 z_vals_field = np.linspace(-L_val * 2.5, L_val * 2.5, 300) * u.mm
 z_plot_mm = z_vals_field.m_as(u.mm)
@@ -407,8 +439,8 @@ fig_field.tight_layout()
 st.pyplot(fig_field)
 
 
-# --- 8. COMBINED PLOTTING ---
-st.header("8. Combined Field and Force Profiles")
+# --- 9. COMBINED PLOTTING ---
+st.header("9. Combined Field and Force Profiles")
 
 z_vals = np.linspace(-L_val*2, L_val*2, 200) * u.mm
 
@@ -437,8 +469,8 @@ fig.tight_layout()
 st.pyplot(fig)
 
 
-# --- 9. SNUBBER EFFECT & SUCK-BACK ANALYSIS ---
-st.header("9. Snubber Effect & Suck-Back Analysis (Force Decay)")
+# --- 10. SNUBBER EFFECT & SUCK-BACK ANALYSIS ---
+st.header("10. Snubber Effect & Suck-Back Analysis (Force Decay)")
 
 # Generate positions specifically showing the switch-off region and beyond
 z_sb = np.linspace(-L_val * 1.5, L_val * 2.5, 400) * u.mm
@@ -499,8 +531,8 @@ st.pyplot(fig_sb)
 st.info("💡 **Understanding Suck-Back:** The force naturally becomes negative (pulling backwards) after the ball crosses the exact center of the coil ($z = 0$). If the coil's current decays too slowly (red line), the coil stays magnetized as the ball passes the center, dragging it backwards and stealing the kinetic energy you just added. The TVS Snubber (blue line) forces the current to zero much faster, virtually eliminating this deceleration drag.")
 
 
-# --- 10. SOLENOID SYSTEM CROSS-SECTION PLOT ---
-st.header("10. Solenoid System Cross-Section")
+# --- 11. SOLENOID SYSTEM CROSS-SECTION PLOT ---
+st.header("11. Solenoid System Cross-Section")
 
 fig2, ax3 = plt.subplots(figsize=(8, 5))
 
