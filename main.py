@@ -173,8 +173,41 @@ col1.metric("Ampere-Turns (NI)", f"{NI.to(u.A).magnitude:.0f} AT")
 col1.caption(f"{N.to(u.dimensionless).magnitude:.0f} turns × {I.to(u.A).magnitude:.3f} A")
 
 
-# --- 3. SPOOL & COIL VISUALIZATION ---
-st.header("3. Spool & Coil Geometry Visualization")
+# --- 3. CYCLOTRON SYSTEM & DUTY CYCLE ---
+st.header("3. Cyclotron System & Duty Cycle")
+
+dist_on_val = 2 * r_ball_val 
+duty_cycle_decimal = dist_on_val / track_circ_val
+duty_cycle_pct = duty_cycle_decimal * 100
+
+P_avg = P * duty_cycle_decimal
+P_sys_avg = P_avg * n_coils_val
+j_rms = j * np.sqrt(duty_cycle_decimal)
+
+col1, col2, col3 = st.columns(3)
+col1.metric("Distance ON per cycle", f"{dist_on_val:.1f} mm")
+col1.caption(f"2 × {r_ball_val:.1f} mm")
+
+col2.metric("Individual Coil Duty Cycle", f"{duty_cycle_pct:.2f} %")
+col2.caption(f"{dist_on_val:.1f} mm / {track_circ_val:.4f} mm")
+
+col3.metric("Total System Duty Cycle", f"{duty_cycle_pct * n_coils_val:.2f} %")
+col3.caption(f"{duty_cycle_pct:.2f}% × {n_coils_val} coils")
+
+
+col1, col2, col3 = st.columns(3)
+col1.metric("RMS Current Density (j_rms)", f"{j_rms.to(u.A/u.mm**2).magnitude:.2f} A/mm²")
+col1.caption(f"{j.to(u.A/u.mm**2).magnitude:.2f} A/mm² × √({duty_cycle_decimal:.4f})")
+
+col2.metric("Avg Power (Per Coil)", f"{P_avg.to(u.W).magnitude:.2f} W")
+col2.caption(f"{P.magnitude:.1f} W × {duty_cycle_decimal:.4f}")
+
+col3.metric("Avg Power (All Coils Combined)", f"{P_sys_avg.to(u.W).magnitude:.2f} W")
+col3.caption(f"{P_avg.to(u.W).magnitude:.2f} W × {n_coils_val} coils")
+
+
+# --- 4. SPOOL & COIL VISUALIZATION ---
+st.header("4. Spool & Coil Geometry Visualization")
 
 fig_geom, ax_geom = plt.subplots(figsize=(8, 5))
 
@@ -216,7 +249,7 @@ fig_geom.tight_layout()
 st.pyplot(fig_geom)
 
 
-# --- 4. BALL & MAGNETIC FIELD FUNCTIONS ---
+# --- 5. BALL & MAGNETIC FIELD FUNCTIONS ---
 def log_mean(rad_a, rad_b):
     return (rad_b - rad_a) / np.log(rad_b / rad_a)
 
@@ -266,7 +299,7 @@ KE_0 = 0.5 * m_ball * v_0**2
 KE_f = KE_0 + W
 v_f = np.sqrt(2 * KE_f / m_ball)
 
-st.header("4. Iron Ball & Switch Configuration")
+st.header("5. Iron Ball & Switch Configuration")
 col1, col2, col3 = st.columns(3)
 col1.metric("Ball Volume", f"{V_ball.to(u.mm**3).magnitude:.0f} mm³")
 col1.caption(f"(4/3) × π × {r_ball_val:.1f}³ mm³")
@@ -298,39 +331,6 @@ col2.caption(f"√ (2 × {W.to(u.mJ).magnitude:.2f} mJ / {m_ball.to(u.g).magnitu
 
 col3.metric("Final Velocity (km/h)", f"{v_f.to(u.km/u.h).magnitude:.2f} km/h")
 col3.caption(f"{v_f.to(u.m/u.s).magnitude:.2f} m/s × 3.6")
-
-
-# --- 5. CYCLOTRON SYSTEM & DUTY CYCLE ---
-st.header("5. Cyclotron System & Duty Cycle")
-
-dist_on_val = 2 * r_ball_val 
-duty_cycle_decimal = dist_on_val / track_circ_val
-duty_cycle_pct = duty_cycle_decimal * 100
-
-P_avg = P * duty_cycle_decimal
-P_sys_avg = P_avg * n_coils_val
-j_rms = j * np.sqrt(duty_cycle_decimal)
-
-col1, col2, col3 = st.columns(3)
-col1.metric("Distance ON per cycle", f"{dist_on_val:.1f} mm")
-col1.caption(f"2 × {r_ball_val:.1f} mm")
-
-col2.metric("Individual Coil Duty Cycle", f"{duty_cycle_pct:.2f} %")
-col2.caption(f"{dist_on_val:.1f} mm / {track_circ_val:.4f} mm")
-
-col3.metric("Total System Duty Cycle", f"{duty_cycle_pct * n_coils_val:.2f} %")
-col3.caption(f"{duty_cycle_pct:.2f}% × {n_coils_val} coils")
-
-
-col1, col2, col3 = st.columns(3)
-col1.metric("RMS Current Density (j_rms)", f"{j_rms.to(u.A/u.mm**2).magnitude:.2f} A/mm²")
-col1.caption(f"{j.to(u.A/u.mm**2).magnitude:.2f} A/mm² × √({duty_cycle_decimal:.4f})")
-
-col2.metric("Avg Power (Per Coil)", f"{P_avg.to(u.W).magnitude:.2f} W")
-col2.caption(f"{P.magnitude:.1f} W × {duty_cycle_decimal:.4f}")
-
-col3.metric("Avg Power (All Coils Combined)", f"{P_sys_avg.to(u.W).magnitude:.2f} W")
-col3.caption(f"{P_avg.to(u.W).magnitude:.2f} W × {n_coils_val} coils")
 
 
 # --- 6. INDUCTANCE ---
