@@ -116,7 +116,9 @@ R_coil = rho * total_length / A_cu
 P = (I * V).to(u.W)
 m_wire = rho_cu * A_cu * l_bar * N         
 
-st.header("1. Coil Geometry & Derived Quantities")
+
+# --- 1. COIL GEOMETRY ---
+st.header("1. Coil Geometry")
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Bare Cu Diameter", f"{d_cu.to(u.mm).magnitude:.3f} mm")
 col1.caption(f"0.127 × 92^((36-{awg})/39)")
@@ -148,6 +150,8 @@ col4.metric("Cu Wire Mass", f"{m_wire.to(u.g).magnitude:.0f} g")
 col4.caption(f"8.96 g/cm³ × {A_cu.to(u.cm**2).magnitude:.5f} cm² × {total_length.to(u.cm).magnitude:.1f} cm")
 
 
+# --- 2. COIL ELECTRICAL ---
+st.header("2. Coil Electrical")
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Resistance", f"{R_coil.to(u.ohm).magnitude:.2f} Ω")
 col1.caption(f"1.68e-8 Ω·m × {total_length.to(u.m).magnitude:.2f} m / {A_cu.to(u.mm**2).magnitude:.4f} mm²")
@@ -164,14 +168,13 @@ if calc_mode == "By Current Density":
 else:
     col4.caption(f"({V_val:.1f}V × {A_total.to(u.mm**2).magnitude:.4f}mm²) / (({b_val:.2f}² - {a_val:.2f}²) × 1.68e-8Ω·m × {f_val:.4f} × π × {L_val:.1f}mm)")
 
-# Moved Ampere-Turns to its own row to keep the 4-column layout pristine
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Ampere-Turns (NI)", f"{NI.to(u.A).magnitude:.0f} AT")
 col1.caption(f"{N.to(u.dimensionless).magnitude:.0f} turns × {I.to(u.A).magnitude:.3f} A")
 
 
-# --- 2. SPOOL & COIL VISUALIZATION ---
-st.header("2. Spool & Coil Geometry Visualization")
+# --- 3. SPOOL & COIL VISUALIZATION ---
+st.header("3. Spool & Coil Geometry Visualization")
 
 fig_geom, ax_geom = plt.subplots(figsize=(8, 5))
 
@@ -213,7 +216,7 @@ fig_geom.tight_layout()
 st.pyplot(fig_geom)
 
 
-# --- BALL & MAGNETIC FIELD FUNCTIONS ---
+# --- 4. BALL & MAGNETIC FIELD FUNCTIONS ---
 def log_mean(rad_a, rad_b):
     return (rad_b - rad_a) / np.log(rad_b / rad_a)
 
@@ -263,7 +266,7 @@ KE_0 = 0.5 * m_ball * v_0**2
 KE_f = KE_0 + W
 v_f = np.sqrt(2 * KE_f / m_ball)
 
-st.header("3. Iron Ball & Switch Configuration")
+st.header("4. Iron Ball & Switch Configuration")
 col1, col2, col3 = st.columns(3)
 col1.metric("Ball Volume", f"{V_ball.to(u.mm**3).magnitude:.0f} mm³")
 col1.caption(f"(4/3) × π × {r_ball_val:.1f}³ mm³")
@@ -297,8 +300,8 @@ col3.metric("Final Velocity (km/h)", f"{v_f.to(u.km/u.h).magnitude:.2f} km/h")
 col3.caption(f"{v_f.to(u.m/u.s).magnitude:.2f} m/s × 3.6")
 
 
-# --- 4. CYCLOTRON SYSTEM & DUTY CYCLE ---
-st.header("4. Cyclotron System & Duty Cycle")
+# --- 5. CYCLOTRON SYSTEM & DUTY CYCLE ---
+st.header("5. Cyclotron System & Duty Cycle")
 
 dist_on_val = 2 * r_ball_val 
 duty_cycle_decimal = dist_on_val / track_circ_val
@@ -330,7 +333,7 @@ col3.metric("Avg Power (All Coils Combined)", f"{P_sys_avg.to(u.W).magnitude:.2f
 col3.caption(f"{P_avg.to(u.W).magnitude:.2f} W × {n_coils_val} coils")
 
 
-# --- 5. INDUCTANCE ---
+# --- 6. INDUCTANCE ---
 def nagaoka_coefficient(R, L):
     k = 2 * R / L 
     K = 1 / (1 + 0.9 * R / L - 0.02 * (R / L)**2 + 0.01 * (R / L)**3)
@@ -345,7 +348,7 @@ L_coil = solenoid_inductance(N, R_eff, L)
 tau = L_coil / R_coil
 t_on = (2 * r_ball / v_f).to(u.ms)
 
-st.header("5. Inductance & Time Constant")
+st.header("6. Inductance & Time Constant")
 col1, col2, col3 = st.columns(3)
 col1.metric("Nagaoka Coeff (K)", f"{nagaoka_coefficient(R_eff, L):.2f}")
 col1.caption(f"f(R_eff={R_eff.to(u.mm).magnitude:.1f}mm, L={L_val:.1f}mm)")
@@ -360,8 +363,8 @@ st.write(f"**Estimated ON time (First kick):** {t_on.magnitude:.4f} ms")
 st.caption(f"2 × {r_ball_val:.1f} mm / {v_f.to(u.mm/u.s).magnitude:.0f} mm/s")
 
 
-# --- 6. MAGNETIC FIELD PLOT ---
-st.header("6. On-axis Magnetic Field Profile")
+# --- 7. MAGNETIC FIELD PLOT ---
+st.header("7. On-axis Magnetic Field Profile")
 
 z_vals_field = np.linspace(-L_val * 2.5, L_val * 2.5, 300) * u.mm
 z_plot_mm = z_vals_field.m_as(u.mm)
@@ -383,8 +386,8 @@ fig_field.tight_layout()
 st.pyplot(fig_field)
 
 
-# --- 7. COMBINED PLOTTING ---
-st.header("7. Combined Field and Force Profiles")
+# --- 8. COMBINED PLOTTING ---
+st.header("8. Combined Field and Force Profiles")
 
 z_vals = np.linspace(-L_val*2, L_val*2, 200) * u.mm
 
@@ -413,8 +416,8 @@ fig.tight_layout()
 st.pyplot(fig)
 
 
-# --- 8. SNUBBER EFFECT & SUCK-BACK ANALYSIS ---
-st.header("8. Snubber Effect & Suck-Back Analysis (Force Decay)")
+# --- 9. SNUBBER EFFECT & SUCK-BACK ANALYSIS ---
+st.header("9. Snubber Effect & Suck-Back Analysis (Force Decay)")
 
 # Generate positions specifically showing the switch-off region and beyond
 z_sb = np.linspace(-L_val * 1.5, L_val * 2.5, 400) * u.mm
@@ -475,8 +478,8 @@ st.pyplot(fig_sb)
 st.info("💡 **Understanding Suck-Back:** The force naturally becomes negative (pulling backwards) after the ball crosses the exact center of the coil ($z = 0$). If the coil's current decays too slowly (red line), the coil stays magnetized as the ball passes the center, dragging it backwards and stealing the kinetic energy you just added. The TVS Snubber (blue line) forces the current to zero much faster, virtually eliminating this deceleration drag.")
 
 
-# --- 9. SOLENOID SYSTEM CROSS-SECTION PLOT ---
-st.header("9. Solenoid System Cross-Section")
+# --- 10. SOLENOID SYSTEM CROSS-SECTION PLOT ---
+st.header("10. Solenoid System Cross-Section")
 
 fig2, ax3 = plt.subplots(figsize=(8, 5))
 
