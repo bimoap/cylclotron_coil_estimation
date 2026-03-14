@@ -173,6 +173,10 @@ col3.caption(f"{N.to(u.dimensionless).magnitude:.0f} turns × {l_bar.to(u.mm).ma
 col4.metric("Cu Wire Mass", f"{m_wire.to(u.g).magnitude:.0f} g")
 col4.caption(f"8.96 g/cm³ × {A_cu.to(u.cm**2).magnitude:.5f} cm² × {total_length.to(u.cm).magnitude:.1f} cm")
 
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Total Wire Area (with enamel)", f"{A_total.to(u.mm**2).magnitude:.4f} mm²")
+col1.caption(f"π × ({d_total.to(u.mm).magnitude:.3f} mm / 2)²")
+
 
 # --- 2. COIL ELECTRICAL ---
 st.header("2. Coil Electrical")
@@ -195,6 +199,9 @@ else:
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Ampere-Turns (NI)", f"{NI.to(u.A).magnitude:.0f} AT")
 col1.caption(f"{N.to(u.dimensionless).magnitude:.0f} turns × {I.to(u.A).magnitude:.3f} A")
+
+col2.metric("Bare Cu Area", f"{A_cu.to(u.mm**2).magnitude:.4f} mm²")
+col2.caption(f"π × ({d_cu.to(u.mm).magnitude:.3f} mm / 2)²")
 
 
 # --- 3. CYCLOTRON SYSTEM & DUTY CYCLE ---
