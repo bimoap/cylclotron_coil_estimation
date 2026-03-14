@@ -112,7 +112,7 @@ N = V / (j * rho * l_bar)
 I = j * A_cu                               
 NI = N * I                                 
 total_length = N * l_bar
-R_coil = rho * total_length / A_cu         # Moved up here to use in Current note
+R_coil = rho * total_length / A_cu         
 P = (I * V).to(u.W)
 m_wire = rho_cu * A_cu * l_bar * N         
 
@@ -149,21 +149,25 @@ col4.caption(f"8.96 g/cm³ × {A_cu.to(u.cm**2).magnitude:.5f} cm² × {total_le
 
 
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Current", f"{I.to(u.A).magnitude:.3f} A")
-# Updated Current Note to display Ohm's Law (V / R)
-col1.caption(f"{V_val:.1f} V / {R_coil.to(u.ohm).magnitude:.2f} Ω")
+col1.metric("Resistance", f"{R_coil.to(u.ohm).magnitude:.2f} Ω")
+col1.caption(f"1.68e-8 Ω·m × {total_length.to(u.m).magnitude:.2f} m / {A_cu.to(u.mm**2).magnitude:.4f} mm²")
 
-col2.metric("Peak Power", f"{P.magnitude:.1f} W")
-col2.caption(f"{I.to(u.A).magnitude:.3f} A × {V_val:.1f} V")
+col2.metric("Current", f"{I.to(u.A).magnitude:.3f} A")
+col2.caption(f"{V_val:.1f} V / {R_coil.to(u.ohm).magnitude:.2f} Ω")
 
-col3.metric("Peak Current Density (j)", f"{j.to(u.A/u.mm**2).magnitude:.2f} A/mm²")
+col3.metric("Peak Power", f"{P.magnitude:.1f} W")
+col3.caption(f"{I.to(u.A).magnitude:.3f} A × {V_val:.1f} V")
+
+col4.metric("Peak Current Density (j)", f"{j.to(u.A/u.mm**2).magnitude:.2f} A/mm²")
 if calc_mode == "By Current Density":
-    col3.caption("User Input")
+    col4.caption("User Input")
 else:
-    col3.caption(f"({V_val:.1f}V × {A_total.to(u.mm**2).magnitude:.4f}mm²) / (({b_val:.2f}² - {a_val:.2f}²) × 1.68e-8Ω·m × {f_val:.4f} × π × {L_val:.1f}mm)")
+    col4.caption(f"({V_val:.1f}V × {A_total.to(u.mm**2).magnitude:.4f}mm²) / (({b_val:.2f}² - {a_val:.2f}²) × 1.68e-8Ω·m × {f_val:.4f} × π × {L_val:.1f}mm)")
 
-col4.metric("Ampere-Turns (NI)", f"{NI.to(u.A).magnitude:.0f} AT")
-col4.caption(f"{N.to(u.dimensionless).magnitude:.0f} turns × {I.to(u.A).magnitude:.3f} A")
+# Moved Ampere-Turns to its own row to keep the 4-column layout pristine
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Ampere-Turns (NI)", f"{NI.to(u.A).magnitude:.0f} AT")
+col1.caption(f"{N.to(u.dimensionless).magnitude:.0f} turns × {I.to(u.A).magnitude:.3f} A")
 
 
 # --- 2. SPOOL & COIL VISUALIZATION ---
@@ -342,18 +346,15 @@ tau = L_coil / R_coil
 t_on = (2 * r_ball / v_f).to(u.ms)
 
 st.header("5. Inductance & Time Constant")
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3 = st.columns(3)
 col1.metric("Nagaoka Coeff (K)", f"{nagaoka_coefficient(R_eff, L):.2f}")
 col1.caption(f"f(R_eff={R_eff.to(u.mm).magnitude:.1f}mm, L={L_val:.1f}mm)")
 
-col2.metric("Resistance", f"{R_coil.to(u.ohm).magnitude:.1f} Ω")
-col2.caption(f"1.68e-8 Ω·m × {total_length.to(u.m).magnitude:.2f} m / {A_cu.to(u.mm**2).magnitude:.4f} mm²")
+col2.metric("Inductance", f"{L_coil.to(u.mH).magnitude:.1f} mH")
+col2.caption(f"(μ₀ × {N.to(u.dimensionless).magnitude:.0f}² × π × {R_eff.to(u.mm).magnitude:.1f}² × {nagaoka_coefficient(R_eff, L):.2f}) / {L_val:.1f} mm")
 
-col3.metric("Inductance", f"{L_coil.to(u.mH).magnitude:.1f} mH")
-col3.caption(f"(μ₀ × {N.to(u.dimensionless).magnitude:.0f}² × π × {R_eff.to(u.mm).magnitude:.1f}² × {nagaoka_coefficient(R_eff, L):.2f}) / {L_val:.1f} mm")
-
-col4.metric("Time Constant (τ)", f"{tau.to(u.ms).magnitude:.1f} ms")
-col4.caption(f"{L_coil.to(u.mH).magnitude:.2f} mH / {R_coil.to(u.ohm).magnitude:.2f} Ω")
+col3.metric("Time Constant (τ)", f"{tau.to(u.ms).magnitude:.1f} ms")
+col3.caption(f"{L_coil.to(u.mH).magnitude:.2f} mH / {R_coil.to(u.ohm).magnitude:.2f} Ω")
 
 st.write(f"**Estimated ON time (First kick):** {t_on.magnitude:.4f} ms")
 st.caption(f"2 × {r_ball_val:.1f} mm / {v_f.to(u.mm/u.s).magnitude:.0f} mm/s")
