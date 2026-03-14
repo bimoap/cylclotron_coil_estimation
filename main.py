@@ -181,27 +181,28 @@ col1.caption(f"π × ({d_total.to(u.mm).magnitude:.3f} mm / 2)²")
 # --- 2. COIL ELECTRICAL ---
 st.header("2. Coil Electrical")
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Resistance", f"{R_coil.to(u.ohm).magnitude:.2f} Ω")
-col1.caption(f"1.68e-8 Ω·m × {total_length.to(u.m).magnitude:.2f} m / {A_cu.to(u.mm**2).magnitude:.4f} mm²")
+col1.metric("Bare Cu Area", f"{A_cu.to(u.mm**2).magnitude:.4f} mm²")
+col1.caption(f"π × ({d_cu.to(u.mm).magnitude:.3f} mm / 2)²")
 
-col2.metric("Current", f"{I.to(u.A).magnitude:.3f} A")
-col2.caption(f"{V_val:.1f} V / {R_coil.to(u.ohm).magnitude:.2f} Ω")
+col2.metric("Resistance", f"{R_coil.to(u.ohm).magnitude:.2f} Ω")
+col2.caption(f"1.68e-8 Ω·m × {total_length.to(u.m).magnitude:.2f} m / {A_cu.to(u.mm**2).magnitude:.4f} mm²")
 
-col3.metric("Peak Power", f"{P.magnitude:.1f} W")
-col3.caption(f"{I.to(u.A).magnitude:.3f} A × {V_val:.1f} V")
+col3.metric("Current", f"{I.to(u.A).magnitude:.3f} A")
+col3.caption(f"{V_val:.1f} V / {R_coil.to(u.ohm).magnitude:.2f} Ω")
 
-col4.metric("Peak Current Density (j)", f"{j.to(u.A/u.mm**2).magnitude:.2f} A/mm²")
-if calc_mode == "By Current Density":
-    col4.caption("User Input")
-else:
-    col4.caption(f"({V_val:.1f}V × {A_total.to(u.mm**2).magnitude:.4f}mm²) / (({b_val:.2f}² - {a_val:.2f}²) × 1.68e-8Ω·m × {f_val:.4f} × π × {L_val:.1f}mm)")
+col4.metric("Peak Power", f"{P.magnitude:.1f} W")
+col4.caption(f"{I.to(u.A).magnitude:.3f} A × {V_val:.1f} V")
 
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Ampere-Turns (NI)", f"{NI.to(u.A).magnitude:.0f} AT")
-col1.caption(f"{N.to(u.dimensionless).magnitude:.0f} turns × {I.to(u.A).magnitude:.3f} A")
+col1.metric("Peak Current Density (j)", f"{j.to(u.A/u.mm**2).magnitude:.2f} A/mm²")
+if calc_mode == "By Current Density":
+    col1.caption("User Input")
+else:
+    # Simplified direct calculation caption using the values from this section
+    col1.caption(f"{I.to(u.A).magnitude:.3f} A / {A_cu.to(u.mm**2).magnitude:.4f} mm²")
 
-col2.metric("Bare Cu Area", f"{A_cu.to(u.mm**2).magnitude:.4f} mm²")
-col2.caption(f"π × ({d_cu.to(u.mm).magnitude:.3f} mm / 2)²")
+col2.metric("Ampere-Turns (NI)", f"{NI.to(u.A).magnitude:.0f} AT")
+col2.caption(f"{N.to(u.dimensionless).magnitude:.0f} turns × {I.to(u.A).magnitude:.3f} A")
 
 
 # --- 3. CYCLOTRON SYSTEM & DUTY CYCLE ---
