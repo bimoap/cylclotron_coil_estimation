@@ -191,14 +191,13 @@ col3.metric("Current", f"{I.to(u.A).magnitude:.3f} A")
 col3.caption(f"{V_val:.1f} V / {R_coil.to(u.ohm).magnitude:.2f} Ω")
 
 col4.metric("Peak Power", f"{P.magnitude:.1f} W")
-col3.caption(f"{I.to(u.A).magnitude:.3f} A × {V_val:.1f} V")
+col4.caption(f"{I.to(u.A).magnitude:.3f} A × {V_val:.1f} V")
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Peak Current Density (j)", f"{j.to(u.A/u.mm**2).magnitude:.2f} A/mm²")
 if calc_mode == "By Current Density":
     col1.caption("User Input")
 else:
-    # Simplified direct calculation caption using the values from this section
     col1.caption(f"{I.to(u.A).magnitude:.3f} A / {A_cu.to(u.mm**2).magnitude:.4f} mm²")
 
 col2.metric("Ampere-Turns (NI)", f"{NI.to(u.A).magnitude:.0f} AT")
@@ -266,14 +265,23 @@ col4.caption(f"{T_ambient_val:.1f} °C (Ambient) + {delta_T:.1f} °C")
 st.info("💡 **Thermal Note:** This estimation assumes the coil is cooling via natural convection in still air. If the projectile or the rotating motion of the track creates localized airflow, the convection coefficient (h) will significantly increase, making the actual operating temperature even cooler than estimated here.")
 
 
+# --- GLOBAL PLOT LIMITS ---
+# Ensure all plots share the exact same X-axis scale for perfect vertical alignment
+L_mm = L.to(u.mm).magnitude
+a_mm = a.to(u.mm).magnitude
+b_mm = b.to(u.mm).magnitude
+r_ball_mm = r_ball.to(u.mm).magnitude
+z_0_mm = z_0.to(u.mm).magnitude
+
+# Dynamically size the unified X-axis to cover the coil, the ball, and the snubber decay region
+plot_x_max_val = max(50.0, L_val * 3.0, abs(z0_val) + r_ball_val * 2 + 10.0)
+plot_x_min_val = -plot_x_max_val
+
+
 # --- 5. SPOOL & COIL VISUALIZATION ---
 st.header("5. Spool & Coil Geometry Visualization")
 
 fig_geom, ax_geom = plt.subplots(figsize=(8, 5))
-
-L_mm = L.to(u.mm).magnitude
-a_mm = a.to(u.mm).magnitude
-b_mm = b.to(u.mm).magnitude
 
 t_bobbin = 2.0  # mm
 
@@ -296,7 +304,7 @@ ax_geom.add_patch(mpl.patches.Rectangle((-L_mm/2, -b_mm), L_mm, b_mm - a_mm, fac
 # Center Axis
 ax_geom.axhline(0, color='black', linestyle='-.', linewidth=1, label='Center Axis')
 
-ax_geom.set_xlim(-L_mm/2 - 10, L_mm/2 + 10)
+ax_geom.set_xlim(plot_x_min_val, plot_x_max_val)
 ax_geom.set_ylim(-b_mm - 10, b_mm + 10)
 ax_geom.set_aspect('equal')
 ax_geom.set_xlabel('Length z (mm)')
@@ -426,7 +434,7 @@ st.caption(f"2 × {r_ball_val:.1f} mm / {v_f.to(u.mm/u.s).magnitude:.0f} mm/s")
 # --- 8. MAGNETIC FIELD PLOT ---
 st.header("8. On-axis Magnetic Field Profile")
 
-z_vals_field = np.linspace(-L_val * 2.5, L_val * 2.5, 300) * u.mm
+z_vals_field = np.linspace(plot_x_min_val, plot_x_max_val, 400) * u.mm
 z_plot_mm = z_vals_field.m_as(u.mm)
 B_plot = B_z(z_vals_field, R_eff, L, N, I).m_as(u.mT)
 
@@ -436,6 +444,7 @@ ax1.plot(z_plot_mm, B_plot, 'b-', linewidth=2, label='$B_z$')
 ax1.axvline(z_0.m_as(u.mm), color='k', linestyle=':', label='Sensor')
 ax1.axvspan(-L.m_as(u.mm)/2, L.m_as(u.mm)/2, color='k', alpha=0.2, label='Solenoid extent')
 
+ax1.set_xlim(plot_x_min_val, plot_x_max_val)
 ax1.set_xlabel('z (mm)')
 ax1.set_ylabel('$B_z$ (mT)')
 ax1.legend(loc='upper right')
@@ -449,7 +458,7 @@ st.pyplot(fig_field)
 # --- 9. COMBINED PLOTTING ---
 st.header("9. Combined Field and Force Profiles")
 
-z_vals = np.linspace(-L_val*2, L_val*2, 200) * u.mm
+z_vals = np.linspace(plot_x_min_val, plot_x_max_val, 400) * u.mm
 
 B_vals = B_z(z_vals, R_eff, L, N, I).to(u.mT).magnitude
 F_vals = F_z(z_vals, R_eff, L, N, I, r_ball).to(u.mN).magnitude
@@ -471,6 +480,7 @@ ax2.set_ylabel('Axial Force F_z (mN)', color='tab:red')
 ax2.plot(z_vals.magnitude, F_vals, color='tab:red', linestyle='--', label='F_z')
 ax2.tick_params(axis='y', labelcolor='tab:red')
 
+ax1.set_xlim(plot_x_min_val, plot_x_max_val)
 fig.legend(loc='upper right', bbox_to_anchor=(0.9, 0.9), bbox_transform=ax1.transAxes)
 fig.tight_layout()
 st.pyplot(fig)
@@ -479,8 +489,7 @@ st.pyplot(fig)
 # --- 10. SNUBBER EFFECT & SUCK-BACK ANALYSIS ---
 st.header("10. Snubber Effect & Suck-Back Analysis (Force Decay)")
 
-# Generate positions specifically showing the switch-off region and beyond
-z_sb = np.linspace(-L_val * 1.5, L_val * 2.5, 400) * u.mm
+z_sb = np.linspace(plot_x_min_val, plot_x_max_val, 400) * u.mm
 z_on_mag = (z_0 - r_ball).to(u.mm).magnitude
 z_off_mag = (z_0 + r_ball).to(u.mm).magnitude
 
@@ -525,10 +534,11 @@ ax_sb.plot(z_sb.magnitude, F_zener, 'b-', label=f'TVS Snubber ({V_tvs_val}V)', l
 ax_sb.axhspan(-max(abs(F_base)), 0, color='red', alpha=0.05, label='Suck-Back Region (Deceleration)')
 ax_sb.axvline(0, color='k', linestyle=':', label='Coil Center')
 
-# Added Switch ON line
+# Switch ON/OFF lines
 ax_sb.axvline(z_on_mag, color='g', linestyle='--', label='Switch ON')
 ax_sb.axvline(z_off_mag, color='orange', linestyle='--', label='Switch OFF')
 
+ax_sb.set_xlim(plot_x_min_val, plot_x_max_val)
 ax_sb.set_xlabel('Position z (mm)')
 ax_sb.set_ylabel('Axial Force F_z (mN)')
 ax_sb.legend(loc='upper right')
@@ -546,9 +556,6 @@ st.header("11. Solenoid System Cross-Section")
 
 fig2, ax3 = plt.subplots(figsize=(8, 5))
 
-r_ball_mm = r_ball.to(u.mm).magnitude
-z_0_mm = z_0.to(u.mm).magnitude
-
 # Upper coil cross-section
 coil_upper = mpl.patches.Rectangle((-L_mm / 2, a_mm), L_mm, b_mm - a_mm, facecolor='orange', edgecolor='black', linewidth=1.5, label='Coil')
 ax3.add_patch(coil_upper)
@@ -563,10 +570,10 @@ ax3.add_patch(ball)
 
 ax3.axvline(z_on_mag, color='g', linestyle='--', label='Field on')
 ax3.axvline(z_off_mag, color='r', linestyle='--', label='Field off')
-ax3.axvline(z_0.m_as(u.mm), color='k', linestyle=':', label='Sensor')
+ax3.axvline(z_0_mm, color='k', linestyle=':', label='Sensor')
 ax3.axhline(0, color='k', linestyle='-', linewidth=0.5)
 
-ax3.set_xlim(-50, 50)
+ax3.set_xlim(plot_x_min_val, plot_x_max_val)
 ax3.set_ylim(-30, 30)
 ax3.set_aspect('equal')
 ax3.set_xlabel('z (mm)')
