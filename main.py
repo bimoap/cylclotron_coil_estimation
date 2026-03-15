@@ -1,5 +1,6 @@
 import streamlit as st
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import pint
@@ -615,3 +616,40 @@ ax3.set_title('System cross-section including ball and sensors (to scale)')
 
 fig2.tight_layout()
 st.pyplot(fig2)
+
+# --- CSV EXPORT GENERATION ---
+st.sidebar.markdown("---")
+st.sidebar.subheader("Export Data")
+
+# Collect all computed variables into a clean dictionary
+export_data = {
+    "Parameter": [
+        "Wire AWG", "Enamel Thickness (mm)", "Fill Factor", "Voltage (V)", "Coil Length L (mm)", "Inner Radius a (mm)", "Outer Radius b (mm)",
+        "Bare Cu Dia (mm)", "Total Wire Dia (mm)", "Radial Build (mm)", "Mean Turn Length (mm)", "Number of Turns", "Wire Length (m)", "Cu Wire Mass (g)",
+        "Bare Cu Area (mm²)", "Total Wire Area (mm²)", "Resistance (Ω)", "Peak Current (A)", "Peak Power (W)", "Current Density (A/mm²)", "Ampere-Turns (AT)",
+        "Track Circumference (mm)", "System Coils", "Dist. ON Per Cycle (mm)", "Coil Duty Cycle (%)", "System Duty Cycle (%)", "RMS Current Density (A/mm²)", "Avg Power Per Coil (W)", "Avg Power System (W)",
+        "Exposed Area (cm²)", "Est. Temp Rise (°C)", "Est. Final Temp (°C)",
+        "Ball Radius (mm)", "Ball Mass (g)", "Switch Position z_0 (mm)", "Max Force B_z at Center (mT)", "Work Done on Ball (mJ)", "Final Velocity (m/s)", "Final RPM",
+        "Inductance (mH)", "Time Constant τ (ms)", "99% Rise Time 5τ (ms)", "Stored Energy (mJ)", "Max Speed Before Choke (RPM)"
+    ],
+    "Value": [
+        awg, t_enamel_mm, f_val, V_val, L_val, a_val, b.to(u.mm).magnitude,
+        d_cu.to(u.mm).magnitude, d_total.to(u.mm).magnitude, (b - a).to(u.mm).magnitude, l_bar.to(u.mm).magnitude, N.to(u.dimensionless).magnitude, total_length.to(u.m).magnitude, m_wire.to(u.g).magnitude,
+        A_cu.to(u.mm**2).magnitude, A_total.to(u.mm**2).magnitude, R_coil.to(u.ohm).magnitude, I.to(u.A).magnitude, P.magnitude, j.to(u.A/u.mm**2).magnitude, NI.to(u.A).magnitude,
+        track_circ_val, n_coils_val, dist_on_val, duty_cycle_pct, (duty_cycle_pct * n_coils_val), j_rms.to(u.A/u.mm**2).magnitude, P_avg.to(u.W).magnitude, P_sys_avg.to(u.W).magnitude,
+        A_surface.to(u.cm**2).magnitude, delta_T, T_final,
+        r_ball_val, m_ball.to(u.g).magnitude, z0_val, B_0.to(u.mT).magnitude, W.to(u.mJ).magnitude, v_f.to(u.m/u.s).magnitude, rpm_final,
+        L_coil.to(u.mH).magnitude, tau.to(u.ms).magnitude, t_99.to(u.ms).magnitude, E_stored.to(u.mJ).magnitude, rpm_choke
+    ]
+}
+
+# Convert to DataFrame and then to a CSV string
+df_export = pd.DataFrame(export_data)
+csv_export = df_export.to_csv(index=False).encode('utf-8')
+
+st.sidebar.download_button(
+    label="Download Full Specs as CSV",
+    data=csv_export,
+    file_name="cyclotron_coil_specs.csv",
+    mime="text/csv",
+)
