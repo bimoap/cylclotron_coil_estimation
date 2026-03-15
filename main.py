@@ -378,7 +378,6 @@ col2.caption(f"7.874 g/cm³ × {V_ball.to(u.cm**3).magnitude:.3f} cm³")
 col3.metric("B at Center", f"{B_0.to(u.mT).magnitude:.1f} mT")
 col3.caption("Biot-Savart field at z=0")
 
-
 col1, col2, col3 = st.columns(3)
 col1.metric("Field ON at z", f"{(z_0 - r_ball).to(u.mm).magnitude:.1f} mm")
 col1.caption(f"{z0_val:.1f} mm - {r_ball_val:.1f} mm")
@@ -389,22 +388,45 @@ col2.caption(f"{z0_val:.1f} mm + {r_ball_val:.1f} mm")
 col3.metric("Work done on ball", f"{W.to(u.mJ).magnitude:.2f} mJ")
 col3.caption(f"∫ F_z dz ({z0_val - r_ball_val:.1f} to {z0_val + r_ball_val:.1f})")
 
-
-# RPM Calculation for Final Velocity
-rpm_final = (v_f.to(u.mm/u.s).magnitude / track_circ_val) * 60
+st.markdown("### Performance After 1 Coil Kick")
+# RPM Calculation for Single Kick Velocity
+rpm_1kick = (v_f.to(u.mm/u.s).magnitude / track_circ_val) * 60
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Initial Velocity", f"{v_0.to(u.mm/u.s).magnitude:.0f} mm/s")
 col1.caption("Assumed 0 mm/s")
 
-col2.metric("Final Velocity", f"{v_f.to(u.mm/u.s).magnitude:.0f} mm/s")
+col2.metric("Velocity (1 Kick)", f"{v_f.to(u.mm/u.s).magnitude:.0f} mm/s")
 col2.caption(f"√ (2 × {W.to(u.mJ).magnitude:.2f} mJ / {m_ball.to(u.g).magnitude:.2f} g)")
 
-col3.metric("Final Velocity (km/h)", f"{v_f.to(u.km/u.h).magnitude:.2f} km/h")
+col3.metric("Velocity (km/h)", f"{v_f.to(u.km/u.h).magnitude:.2f} km/h")
 col3.caption(f"{v_f.to(u.m/u.s).magnitude:.2f} m/s × 3.6")
 
-col4.metric("Final Speed (RPM)", f"{rpm_final:.1f} RPM")
+col4.metric("Track Speed (RPM)", f"{rpm_1kick:.1f} RPM")
 col4.caption(f"Based on {track_circ_val:.1f} mm track")
+
+# --- NEW: FULL LAP PERFORMANCE ESTIMATION ---
+st.markdown(f"### Performance After 1 Full Lap ({n_coils_val} Coils)")
+W_lap = W * n_coils_val
+KE_lap = KE_0 + W_lap
+v_lap = np.sqrt(2 * KE_lap / m_ball)
+
+freq_hz = v_lap.to(u.mm/u.s).magnitude / track_circ_val
+rpm_lap = freq_hz * 60
+period_ms = (1 / freq_hz) * 1000 if freq_hz > 0 else 0
+
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Velocity (1 Lap)", f"{v_lap.to(u.m/u.s).magnitude:.2f} m/s")
+col1.caption(f"√ (2 × {W_lap.to(u.mJ).magnitude:.2f} mJ / {m_ball.to(u.g).magnitude:.2f} g)")
+
+col2.metric("Track Frequency", f"{freq_hz:.2f} Hz")
+col2.caption("Laps per second")
+
+col3.metric("Track Speed (RPM)", f"{rpm_lap:.1f} RPM")
+col3.caption(f"{freq_hz:.2f} Hz × 60")
+
+col4.metric("Lap Period", f"{period_ms:.1f} ms")
+col4.caption(f"1 / {freq_hz:.2f} Hz")
 
 
 # --- 7. INDUCTANCE & STORED ENERGY ---
@@ -629,7 +651,8 @@ export_data = {
         "Bare Cu Area (mm²)", "Total Wire Area (mm²)", "Resistance (Ω)", "Peak Current (A)", "Peak Power (W)", "Current Density (A/mm²)", "Ampere-Turns (AT)",
         "Track Circumference (mm)", "System Coils", "Dist. ON Per Cycle (mm)", "Coil Duty Cycle (%)", "System Duty Cycle (%)", "RMS Current Density (A/mm²)", "Avg Power Per Coil (W)", "Avg Power System (W)",
         "Exposed Area (cm²)", "Est. Temp Rise (°C)", "Est. Final Temp (°C)",
-        "Ball Radius (mm)", "Ball Mass (g)", "Switch Position z_0 (mm)", "Max Force B_z at Center (mT)", "Work Done on Ball (mJ)", "Final Velocity (m/s)", "Final RPM",
+        "Ball Radius (mm)", "Ball Mass (g)", "Switch Position z_0 (mm)", "Max Force B_z at Center (mT)", "Work Done on Ball (mJ)", "Velocity (1 Kick) (m/s)", "Track Speed 1-Kick (RPM)",
+        "Velocity (1 Lap) (m/s)", "Track Frequency (Hz)", "Track Speed 1-Lap (RPM)", "Lap Period (ms)",
         "Inductance (mH)", "Time Constant τ (ms)", "99% Rise Time 5τ (ms)", "Stored Energy (mJ)", "Max Speed Before Choke (RPM)"
     ],
     "Value": [
@@ -638,7 +661,8 @@ export_data = {
         A_cu.to(u.mm**2).magnitude, A_total.to(u.mm**2).magnitude, R_coil.to(u.ohm).magnitude, I.to(u.A).magnitude, P.magnitude, j.to(u.A/u.mm**2).magnitude, NI.to(u.A).magnitude,
         track_circ_val, n_coils_val, dist_on_val, duty_cycle_pct, (duty_cycle_pct * n_coils_val), j_rms.to(u.A/u.mm**2).magnitude, P_avg.to(u.W).magnitude, P_sys_avg.to(u.W).magnitude,
         A_surface.to(u.cm**2).magnitude, delta_T, T_final,
-        r_ball_val, m_ball.to(u.g).magnitude, z0_val, B_0.to(u.mT).magnitude, W.to(u.mJ).magnitude, v_f.to(u.m/u.s).magnitude, rpm_final,
+        r_ball_val, m_ball.to(u.g).magnitude, z0_val, B_0.to(u.mT).magnitude, W.to(u.mJ).magnitude, v_f.to(u.m/u.s).magnitude, rpm_1kick,
+        v_lap.to(u.m/u.s).magnitude, freq_hz, rpm_lap, period_ms,
         L_coil.to(u.mH).magnitude, tau.to(u.ms).magnitude, t_99.to(u.ms).magnitude, E_stored.to(u.mJ).magnitude, rpm_choke
     ]
 }
