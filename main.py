@@ -266,16 +266,15 @@ st.info("💡 **Thermal Note:** This estimation assumes the coil is cooling via 
 
 
 # --- GLOBAL PLOT LIMITS ---
-# Ensure all plots share the exact same X-axis scale for perfect vertical alignment
+# Lock X-axis scale for perfect vertical alignment across all plots
 L_mm = L.to(u.mm).magnitude
 a_mm = a.to(u.mm).magnitude
 b_mm = b.to(u.mm).magnitude
 r_ball_mm = r_ball.to(u.mm).magnitude
 z_0_mm = z_0.to(u.mm).magnitude
 
-# Dynamically size the unified X-axis to cover the coil, the ball, and the snubber decay region
-plot_x_max_val = max(50.0, L_val * 3.0, abs(z0_val) + r_ball_val * 2 + 10.0)
-plot_x_min_val = -plot_x_max_val
+plot_x_min_val = -50.0
+plot_x_max_val = 50.0
 
 
 # --- 5. SPOOL & COIL VISUALIZATION ---
