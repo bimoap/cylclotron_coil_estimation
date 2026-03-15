@@ -191,7 +191,7 @@ col3.metric("Current", f"{I.to(u.A).magnitude:.3f} A")
 col3.caption(f"{V_val:.1f} V / {R_coil.to(u.ohm).magnitude:.2f} Ω")
 
 col4.metric("Peak Power", f"{P.magnitude:.1f} W")
-col4.caption(f"{I.to(u.A).magnitude:.3f} A × {V_val:.1f} V")
+col3.caption(f"{I.to(u.A).magnitude:.3f} A × {V_val:.1f} V")
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Peak Current Density (j)", f"{j.to(u.A/u.mm**2).magnitude:.2f} A/mm²")
@@ -524,6 +524,9 @@ ax_sb.plot(z_sb.magnitude, F_zener, 'b-', label=f'TVS Snubber ({V_tvs_val}V)', l
 # Highlight suck-back region
 ax_sb.axhspan(-max(abs(F_base)), 0, color='red', alpha=0.05, label='Suck-Back Region (Deceleration)')
 ax_sb.axvline(0, color='k', linestyle=':', label='Coil Center')
+
+# Added Switch ON line
+ax_sb.axvline(z_on_mag, color='g', linestyle='--', label='Switch ON')
 ax_sb.axvline(z_off_mag, color='orange', linestyle='--', label='Switch OFF')
 
 ax_sb.set_xlabel('Position z (mm)')
