@@ -400,7 +400,7 @@ col3.metric("Final Velocity (km/h)", f"{v_f.to(u.km/u.h).magnitude:.2f} km/h")
 col3.caption(f"{v_f.to(u.m/u.s).magnitude:.2f} m/s × 3.6")
 
 
-# --- 7. INDUCTANCE ---
+# --- 7. INDUCTANCE & STORED ENERGY ---
 def nagaoka_coefficient(R, L):
     k = 2 * R / L 
     K = 1 / (1 + 0.9 * R / L - 0.02 * (R / L)**2 + 0.01 * (R / L)**3)
@@ -413,10 +413,11 @@ def solenoid_inductance(N, R, L):
 
 L_coil = solenoid_inductance(N, R_eff, L)
 tau = L_coil / R_coil
+E_stored = 0.5 * L_coil * I**2
 t_on = (2 * r_ball / v_f).to(u.ms)
 
 st.header("7. Inductance & Time Constant")
-col1, col2, col3 = st.columns(3)
+col1, col2, col3, col4 = st.columns(4)
 col1.metric("Nagaoka Coeff (K)", f"{nagaoka_coefficient(R_eff, L):.2f}")
 col1.caption(f"f(R_eff={R_eff.to(u.mm).magnitude:.1f}mm, L={L_val:.1f}mm)")
 
@@ -425,6 +426,9 @@ col2.caption(f"(μ₀ × {N.to(u.dimensionless).magnitude:.0f}² × π × {R_eff
 
 col3.metric("Time Constant (τ)", f"{tau.to(u.ms).magnitude:.1f} ms")
 col3.caption(f"{L_coil.to(u.mH).magnitude:.2f} mH / {R_coil.to(u.ohm).magnitude:.2f} Ω")
+
+col4.metric("Stored Energy", f"{E_stored.to(u.mJ).magnitude:.1f} mJ")
+col4.caption(f"½ × {L_coil.to(u.mH).magnitude:.2f} mH × ({I.to(u.A).magnitude:.3f} A)²")
 
 st.write(f"**Estimated ON time (First kick):** {t_on.magnitude:.4f} ms")
 st.caption(f"2 × {r_ball_val:.1f} mm / {v_f.to(u.mm/u.s).magnitude:.0f} mm/s")
