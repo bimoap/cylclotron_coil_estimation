@@ -416,6 +416,10 @@ tau = L_coil / R_coil
 E_stored = 0.5 * L_coil * I**2
 t_on = (2 * r_ball / v_f).to(u.ms)
 
+# Calculate Wake-Up speed limits
+t_99 = 5 * tau
+v_choke = (2 * r_ball / t_99).to(u.m / u.s)
+
 st.header("7. Inductance & Time Constant")
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Nagaoka Coeff (K)", f"{nagaoka_coefficient(R_eff, L):.2f}")
@@ -430,8 +434,22 @@ col3.caption(f"{L_coil.to(u.mH).magnitude:.2f} mH / {R_coil.to(u.ohm).magnitude:
 col4.metric("Stored Energy", f"{E_stored.to(u.mJ).magnitude:.1f} mJ")
 col4.caption(f"½ × {L_coil.to(u.mH).magnitude:.2f} mH × ({I.to(u.A).magnitude:.3f} A)²")
 
-st.write(f"**Estimated ON time (First kick):** {t_on.magnitude:.4f} ms")
-st.caption(f"2 × {r_ball_val:.1f} mm / {v_f.to(u.mm/u.s).magnitude:.0f} mm/s")
+
+st.markdown("### Coil Wake-Up & Speed Limit Analysis")
+col1, col2, col3 = st.columns(3)
+col1.metric("99% Rise Time (5τ)", f"{t_99.to(u.ms).magnitude:.2f} ms")
+col1.caption("Time to reach full magnetic force")
+
+col2.metric("Est. Sensor ON-Time (Lap 1)", f"{t_on.to(u.ms).magnitude:.2f} ms")
+col2.caption(f"At {v_f.to(u.m/u.s).magnitude:.2f} m/s")
+
+col3.metric("Max Speed Before Choking", f"{v_choke.to(u.m/u.s).magnitude:.2f} m/s")
+col3.caption(f"Speed where ON-time equals {t_99.to(u.ms).magnitude:.2f} ms")
+
+if t_99 > t_on:
+    st.warning(f"⚠️ **Wake-Up Too Slow:** The coil takes longer to fully turn on ({t_99.to(u.ms).magnitude:.2f} ms) than the ball spends in the sensor zone ({t_on.to(u.ms).magnitude:.2f} ms). You are losing pulling power on the very first kick!")
+else:
+    st.success(f"✅ **Wake-Up Speed Good:** The coil fully magnetizes ({t_99.to(u.ms).magnitude:.2f} ms) before the ball leaves the sensor zone ({t_on.to(u.ms).magnitude:.2f} ms) on the first kick.")
 
 
 # --- 8. MAGNETIC FIELD PLOT ---
