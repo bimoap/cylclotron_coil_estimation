@@ -389,7 +389,10 @@ col3.metric("Work done on ball", f"{W.to(u.mJ).magnitude:.2f} mJ")
 col3.caption(f"∫ F_z dz ({z0_val - r_ball_val:.1f} to {z0_val + r_ball_val:.1f})")
 
 
-col1, col2, col3 = st.columns(3)
+# RPM Calculation for Final Velocity
+rpm_final = (v_f.to(u.mm/u.s).magnitude / track_circ_val) * 60
+
+col1, col2, col3, col4 = st.columns(4)
 col1.metric("Initial Velocity", f"{v_0.to(u.mm/u.s).magnitude:.0f} mm/s")
 col1.caption("Assumed 0 mm/s")
 
@@ -398,6 +401,9 @@ col2.caption(f"√ (2 × {W.to(u.mJ).magnitude:.2f} mJ / {m_ball.to(u.g).magnitu
 
 col3.metric("Final Velocity (km/h)", f"{v_f.to(u.km/u.h).magnitude:.2f} km/h")
 col3.caption(f"{v_f.to(u.m/u.s).magnitude:.2f} m/s × 3.6")
+
+col4.metric("Final Speed (RPM)", f"{rpm_final:.1f} RPM")
+col4.caption(f"Based on {track_circ_val:.1f} mm track")
 
 
 # --- 7. INDUCTANCE & STORED ENERGY ---
@@ -419,6 +425,7 @@ t_on = (2 * r_ball / v_f).to(u.ms)
 # Calculate Wake-Up speed limits
 t_99 = 5 * tau
 v_choke = (2 * r_ball / t_99).to(u.m / u.s)
+rpm_choke = (v_choke.to(u.mm/u.s).magnitude / track_circ_val) * 60
 
 st.header("7. Inductance & Time Constant")
 col1, col2, col3, col4 = st.columns(4)
@@ -436,7 +443,7 @@ col4.caption(f"½ × {L_coil.to(u.mH).magnitude:.2f} mH × ({I.to(u.A).magnitude
 
 
 st.markdown("### Coil Wake-Up & Speed Limit Analysis")
-col1, col2, col3 = st.columns(3)
+col1, col2, col3, col4 = st.columns(4)
 col1.metric("99% Rise Time (5τ)", f"{t_99.to(u.ms).magnitude:.2f} ms")
 col1.caption("Time to reach full magnetic force")
 
@@ -445,6 +452,9 @@ col2.caption(f"At {v_f.to(u.m/u.s).magnitude:.2f} m/s")
 
 col3.metric("Max Speed Before Choking", f"{v_choke.to(u.m/u.s).magnitude:.2f} m/s")
 col3.caption(f"Speed where ON-time equals {t_99.to(u.ms).magnitude:.2f} ms")
+
+col4.metric("Max Limit (RPM)", f"{rpm_choke:.0f} RPM")
+col4.caption("Absolute track RPM limit")
 
 if t_99 > t_on:
     st.warning(f"⚠️ **Wake-Up Too Slow:** The coil takes longer to fully turn on ({t_99.to(u.ms).magnitude:.2f} ms) than the ball spends in the sensor zone ({t_on.to(u.ms).magnitude:.2f} ms). You are losing pulling power on the very first kick!")
