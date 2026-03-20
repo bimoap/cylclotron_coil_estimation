@@ -266,20 +266,22 @@ col4.caption(f"{T_ambient_val:.1f} °C (Ambient) + {delta_T:.1f} °C")
 st.info("💡 **Thermal Note:** This estimation assumes the coil is cooling via natural convection in still air. If the projectile or the rotating motion of the track creates localized airflow, the convection coefficient (h) will significantly increase, making the actual operating temperature even cooler than estimated here.")
 
 
-# --- GLOBAL PLOT LIMITS ---
+# --- GLOBAL PLOT LIMITS & CALCS ---
 # Lock X-axis scale for perfect vertical alignment across all plots
 L_mm = L.to(u.mm).magnitude
 a_mm = a.to(u.mm).magnitude
 b_mm = b.to(u.mm).magnitude
 r_ball_mm = r_ball.to(u.mm).magnitude
 z_0_mm = z_0.to(u.mm).magnitude
+z_on_mag = (z_0 - r_ball).to(u.mm).magnitude
+z_off_mag = (z_0 + r_ball).to(u.mm).magnitude
 
 plot_x_min_val = -50.0
 plot_x_max_val = 50.0
 
 
-# --- 5. SPOOL & COIL VISUALIZATION ---
-st.header("5. Spool & Coil Geometry Visualization")
+# --- 5. SPOOL, COIL & SENSOR VISUALIZATION ---
+st.header("5. Spool, Coil & Sensor Visualization")
 
 fig_geom, ax_geom = plt.subplots(figsize=(8, 5))
 
@@ -301,8 +303,17 @@ ax_geom.add_patch(mpl.patches.Rectangle((-L_mm/2, -a_mm), L_mm, t_bobbin, faceco
 ax_geom.add_patch(mpl.patches.Rectangle((-L_mm/2, a_mm), L_mm, b_mm - a_mm, facecolor='peru', hatch='///', edgecolor='black', label='Copper Winding'))
 ax_geom.add_patch(mpl.patches.Rectangle((-L_mm/2, -b_mm), L_mm, b_mm - a_mm, facecolor='peru', hatch='///', edgecolor='black'))
 
+# Add Iron Ball
+ball = mpl.patches.Circle((z_0_mm, 0), r_ball_mm, facecolor='silver', edgecolor='black', linewidth=1.5, label='Iron Ball', zorder=3)
+ax_geom.add_patch(ball)
+
+# Sensor and Switch Boundaries
+ax_geom.axvline(z_on_mag, color='green', linestyle='--', linewidth=1.5, label='Switch ON')
+ax_geom.axvline(z_off_mag, color='orange', linestyle='--', linewidth=1.5, label='Switch OFF')
+ax_geom.axvline(z_0_mm, color='black', linestyle=':', linewidth=1.5, label='Sensor Position')
+
 # Center Axis
-ax_geom.axhline(0, color='black', linestyle='-.', linewidth=1, label='Center Axis')
+ax_geom.axhline(0, color='black', linestyle='-.', linewidth=1)
 
 ax_geom.set_xlim(plot_x_min_val, plot_x_max_val)
 ax_geom.set_ylim(-b_mm - 10, b_mm + 10)
@@ -311,7 +322,7 @@ ax_geom.set_xlabel('Length z (mm)')
 ax_geom.set_ylabel('Radius r (mm)')
 ax_geom.legend(loc='upper right', bbox_to_anchor=(1.35, 1))
 ax_geom.grid(True, alpha=0.3)
-ax_geom.set_title('Cross-Sectional View of Bobbin and Winding')
+ax_geom.set_title('Cross-Sectional View of Bobbin, Winding, and Projectile')
 
 fig_geom.tight_layout()
 st.pyplot(fig_geom)
@@ -379,10 +390,10 @@ col3.metric("B at Center", f"{B_0.to(u.mT).magnitude:.1f} mT")
 col3.caption("Biot-Savart field at z=0")
 
 col1, col2, col3 = st.columns(3)
-col1.metric("Field ON at z", f"{(z_0 - r_ball).to(u.mm).magnitude:.1f} mm")
+col1.metric("Field ON at z", f"{z_on_mag:.1f} mm")
 col1.caption(f"{z0_val:.1f} mm - {r_ball_val:.1f} mm")
 
-col2.metric("Field OFF at z", f"{(z_0 + r_ball).to(u.mm).magnitude:.1f} mm")
+col2.metric("Field OFF at z", f"{z_off_mag:.1f} mm")
 col2.caption(f"{z0_val:.1f} mm + {r_ball_val:.1f} mm")
 
 col3.metric("Work done on ball", f"{W.to(u.mJ).magnitude:.2f} mJ")
@@ -405,7 +416,7 @@ col3.caption(f"{v_f.to(u.m/u.s).magnitude:.2f} m/s × 3.6")
 col4.metric("Track Speed (RPM)", f"{rpm_1kick:.1f} RPM")
 col4.caption(f"Based on {track_circ_val:.1f} mm track")
 
-# --- NEW: FULL LAP PERFORMANCE ESTIMATION ---
+# --- FULL LAP PERFORMANCE ESTIMATION ---
 st.markdown(f"### Performance After 1 Full Lap ({n_coils_val} Coils)")
 W_lap = W * n_coils_val
 KE_lap = KE_0 + W_lap
@@ -495,7 +506,7 @@ B_plot = B_z(z_vals_field, R_eff, L, N, I).m_as(u.mT)
 fig_field, ax1 = plt.subplots(figsize=(8, 5))
 
 ax1.plot(z_plot_mm, B_plot, 'b-', linewidth=2, label='$B_z$')
-ax1.axvline(z_0.m_as(u.mm), color='k', linestyle=':', label='Sensor')
+ax1.axvline(z_0_mm, color='k', linestyle=':', label='Sensor')
 ax1.axvspan(-L.m_as(u.mm)/2, L.m_as(u.mm)/2, color='k', alpha=0.2, label='Solenoid extent')
 
 ax1.set_xlim(plot_x_min_val, plot_x_max_val)
@@ -525,8 +536,6 @@ ax1.plot(z_vals.magnitude, B_vals, color='tab:blue', label='B_z')
 ax1.tick_params(axis='y', labelcolor='tab:blue')
 ax1.grid(True, alpha=0.3)
 
-z_on_mag = (z_0 - r_ball).to(u.mm).magnitude
-z_off_mag = (z_0 + r_ball).to(u.mm).magnitude
 ax1.axvspan(z_on_mag, z_off_mag, color='orange', alpha=0.2, label='Coil ON Region (Work Integration)')
 
 ax2 = ax1.twinx()
@@ -544,8 +553,6 @@ st.pyplot(fig)
 st.header("10. Snubber Effect & Suck-Back Analysis (Force Decay)")
 
 z_sb = np.linspace(plot_x_min_val, plot_x_max_val, 400) * u.mm
-z_on_mag = (z_0 - r_ball).to(u.mm).magnitude
-z_off_mag = (z_0 + r_ball).to(u.mm).magnitude
 
 # Calculate ratio of current decay over time, mapped to space via velocity
 I_ratio_ideal = np.zeros(len(z_sb))
@@ -604,40 +611,6 @@ st.pyplot(fig_sb)
 
 st.info("💡 **Understanding Suck-Back:** The force naturally becomes negative (pulling backwards) after the ball crosses the exact center of the coil ($z = 0$). If the coil's current decays too slowly (red line), the coil stays magnetized as the ball passes the center, dragging it backwards and stealing the kinetic energy you just added. The TVS Snubber (blue line) forces the current to zero much faster, virtually eliminating this deceleration drag.")
 
-
-# --- 11. SOLENOID SYSTEM CROSS-SECTION PLOT ---
-st.header("11. Solenoid System Cross-Section")
-
-fig2, ax3 = plt.subplots(figsize=(8, 5))
-
-# Upper coil cross-section
-coil_upper = mpl.patches.Rectangle((-L_mm / 2, a_mm), L_mm, b_mm - a_mm, facecolor='orange', edgecolor='black', linewidth=1.5, label='Coil')
-ax3.add_patch(coil_upper)
-
-# Lower coil cross-section
-coil_lower = mpl.patches.Rectangle((-L_mm / 2, -b_mm), L_mm, b_mm - a_mm, facecolor='orange', edgecolor='black', linewidth=1.5)
-ax3.add_patch(coil_lower)
-
-# Iron ball
-ball = mpl.patches.Circle((z_0_mm, 0), r_ball_mm, facecolor='gray', edgecolor='black', linewidth=1.5, label='Iron ball')
-ax3.add_patch(ball)
-
-ax3.axvline(z_on_mag, color='g', linestyle='--', label='Field on')
-ax3.axvline(z_off_mag, color='r', linestyle='--', label='Field off')
-ax3.axvline(z_0_mm, color='k', linestyle=':', label='Sensor')
-ax3.axhline(0, color='k', linestyle='-', linewidth=0.5)
-
-ax3.set_xlim(plot_x_min_val, plot_x_max_val)
-ax3.set_ylim(-30, 30)
-ax3.set_aspect('equal')
-ax3.set_xlabel('z (mm)')
-ax3.set_ylabel('r (mm)')
-ax3.legend(loc='upper right')
-ax3.grid(True, alpha=0.3)
-ax3.set_title('System cross-section including ball and sensors (to scale)')
-
-fig2.tight_layout()
-st.pyplot(fig2)
 
 # --- CSV EXPORT GENERATION ---
 st.sidebar.markdown("---")
