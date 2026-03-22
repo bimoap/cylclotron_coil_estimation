@@ -19,34 +19,90 @@ def awg_diameter(n):
 # --- SIDEBAR INPUTS ---
 st.sidebar.header("Input Parameters")
 
-awg = st.sidebar.number_input("Wire AWG", min_value=1, max_value=40, value=20, step=1)
+conductor_type = st.sidebar.radio("Conductor Type", ["Round Wire (AWG)", "Foil / Strip Copper"])
 
-# Enamel Thickness Input (thou to mm conversion)
-t_enamel_thou = st.sidebar.number_input("Enamel Thickness (thou)", min_value=0.0, max_value=10.0, value=1.0, step=0.1)
-t_enamel_mm = t_enamel_thou * 0.0254
-st.sidebar.caption(f"*(Metric equivalent: {t_enamel_mm:.4f} mm)*")
+if conductor_type == "Round Wire (AWG)":
+    awg = st.sidebar.number_input("Wire AWG", min_value=1, max_value=40, value=20, step=1)
+    
+    t_enamel_thou = st.sidebar.number_input("Enamel Thickness (thou)", min_value=0.0, max_value=10.0, value=1.0, step=0.1)
+    t_enamel_mm = t_enamel_thou * 0.0254
+    st.sidebar.caption(f"*(Metric equivalent: {t_enamel_mm:.4f} mm)*")
+    
+    d_cu_val = awg_diameter(awg)
+    d_total_val = d_cu_val + (2 * t_enamel_mm)
+    
+    A_cu_val = np.pi * (d_cu_val / 2) ** 2             
+    A_total_val = np.pi * (d_total_val / 2) ** 2   
 
-# Calculate Dynamic Default for Fill Factor
-d_cu_val = awg_diameter(awg)
-d_total_val = d_cu_val + (2 * t_enamel_mm)
+    # Orthocyclic limit = pi / (2 * sqrt(3)) ≈ 0.9069
+    geom_limit = np.pi / (2 * np.sqrt(3))
+    f_cu_default = geom_limit * (A_cu_val / A_total_val)
+    
+    L_val = st.sidebar.number_input("Solenoid Length 'L' (mm)", value=20.0)
+    
+    # UI Labels for Round Wire
+    lbl_cu_dim = "Bare Cu Diameter"
+    val_cu_dim = d_cu_val
+    cap_cu_dim = f"0.127 × 92^((36-{awg})/39)"
+    
+    lbl_tot_dim = "Total Wire Dia. (with enamel)"
+    val_tot_dim = d_total_val
+    cap_tot_dim = f"{d_cu_val:.3f} mm + 2({t_enamel_mm:.4f} mm)"
+    
+    cap_area_cu = f"π × ({d_cu_val:.3f} mm / 2)²"
+    cap_area_tot = f"π × ({d_total_val:.3f} mm / 2)²"
+    
+    csv_conductor = f"AWG {awg}"
+    csv_insulation = f"{t_enamel_thou} thou Enamel"
 
-# Orthocyclic limit = pi / (2 * sqrt(3)) ≈ 0.9069
-geom_limit = np.pi / (2 * np.sqrt(3))
-# Copper Space Factor scales the geometric limit by the bare-to-total area ratio
-f_cu_default = geom_limit * ((d_cu_val / d_total_val) ** 2)
+else:
+    foil_width = st.sidebar.selectbox("Foil Width (mm)", [11.0, 16.5])
+    L_val = foil_width
+    st.sidebar.caption(f"*(Solenoid Length 'L' automatically locked to {L_val} mm)*")
+    
+    t_cu_val = 0.2
+    st.sidebar.caption(f"*(Bare Copper Thickness: {t_cu_val} mm)*")
+    
+    kapton_thou = st.sidebar.number_input("Kapton Tape Thickness (thou)", value=1.0, step=0.1)
+    glue_thou = st.sidebar.number_input("Est. Glue Thickness (thou)", value=0.5, step=0.1)
+    t_ins_mm = (kapton_thou + glue_thou) * 0.0254
+    st.sidebar.caption(f"*(Total Insulator Thickness: {t_ins_mm:.4f} mm)*")
+    
+    t_layer_val = t_cu_val + t_ins_mm
+    
+    A_cu_val = foil_width * t_cu_val
+    A_total_val = foil_width * t_layer_val
+    
+    # Foil Fill Factor (assuming 100% width utilization, it's just the thickness ratio)
+    f_cu_default = A_cu_val / A_total_val
 
+    # UI Labels for Foil
+    lbl_cu_dim = "Bare Foil Thickness"
+    val_cu_dim = t_cu_val
+    cap_cu_dim = "Fixed 0.2 mm"
+    
+    lbl_tot_dim = "Total Layer Thickness"
+    val_tot_dim = t_layer_val
+    cap_tot_dim = f"{t_cu_val:.3f} mm + {t_ins_mm:.4f} mm"
+    
+    cap_area_cu = f"{foil_width} mm × {t_cu_val} mm"
+    cap_area_tot = f"{foil_width} mm × {t_layer_val:.4f} mm"
+    
+    csv_conductor = f"{foil_width}mm Foil"
+    csv_insulation = f"{kapton_thou + glue_thou} thou Kapton+Glue"
+
+st.sidebar.markdown("---")
 f_val = st.sidebar.number_input(
-    "Copper Fill Factor 'f'", 
+    "Bare Copper Fill Factor 'f'", 
     value=float(f_cu_default), 
     min_value=0.1, 
     max_value=1.0, 
     format="%.4f"
 )
-st.sidebar.caption(f"*(Theoretical orthocyclic max for AWG {awg}: **{f_cu_default:.4f}**)*")
+st.sidebar.caption(f"*(Theoretical max for this conductor: **{f_cu_default:.4f}**)*")
 
 V_val = st.sidebar.number_input("Voltage (V)", value=12.0)
 a_val = st.sidebar.number_input("Inner Radius 'a' (mm)", value=12.7)
-L_val = st.sidebar.number_input("Solenoid Length 'L' (mm)", value=20.0)
 
 # --- NEW: CALCULATION MODE ---
 st.sidebar.markdown("---")
@@ -63,7 +119,6 @@ else:
 st.sidebar.markdown("---")
 st.sidebar.subheader("Cyclotron Settings")
 
-# Updated Track Input Logic
 track_input_mode = st.sidebar.radio("Define Track By:", ["Radius", "Diameter"])
 if track_input_mode == "Radius":
     track_r_val = st.sidebar.number_input("Track Radius (mm)", value=95.0)
@@ -72,10 +127,8 @@ else:
     track_d_val = st.sidebar.number_input("Track Diameter (mm)", value=190.0)
     track_r_val = track_d_val / 2
 
-# Calculate final circumference based on diameter
 track_circ_val = np.pi * track_d_val
 
-# Display dynamic caption
 if track_input_mode == "Radius":
     st.sidebar.caption(f"*(Diameter: **{track_d_val:.1f}** mm | Circumference: **{track_circ_val:.1f}** mm)*")
 else:
@@ -106,29 +159,25 @@ L = L_val * u.mm
 f = f_val
 r_ball = r_ball_val * u.mm
 z_0 = z0_val * u.mm
-t_enamel = t_enamel_mm * u.mm
 V_tvs = V_tvs_val * u.V
 
 rho = 1.68e-8 * u.ohm * u.m  # copper resistivity
 rho_cu = 8.96 * u.g / u.cm**3
 rho_iron = 7874 * u.kg / u.m**3
 
-# --- WIRE GEOMETRY WITH ENAMEL ---
-d_cu = d_cu_val * u.mm
-d_total = d_total_val * u.mm
-
-A_cu = np.pi * (d_cu / 2) ** 2             
-A_total = np.pi * (d_total / 2) ** 2       
+A_cu = A_cu_val * u.mm**2
+A_total = A_total_val * u.mm**2
 
 # --- CORE CALCULATION BASED ON SELECTED MODE ---
+# Note: Equations updated to mathematically isolate Bare Cu Area (A_cu) for flawless foil integration
 if calc_mode == "By Current Density":
     j = j_val * u.A / u.mm**2
     # Calculate outer radius b
-    b = np.sqrt(a**2 + (V * A_total) / (j * rho * f * np.pi * L))
+    b = np.sqrt(a**2 + (V * A_cu) / (j * rho * f * np.pi * L))
 else:
     b = b_val * u.mm
     # Calculate current density j based on chosen b
-    j_raw = (V * A_total) / ((b**2 - a**2) * rho * f * np.pi * L)
+    j_raw = (V * A_cu) / ((b**2 - a**2) * rho * f * np.pi * L)
     j = j_raw.to(u.A / u.mm**2)
 
 # --- DERIVED QUANTITIES ---
@@ -145,48 +194,47 @@ m_wire = rho_cu * A_cu * l_bar * N
 # --- 1. COIL GEOMETRY ---
 st.header("1. Coil Geometry")
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Bare Cu Diameter", f"{d_cu.to(u.mm).magnitude:.3f} mm")
-col1.caption(f"0.127 × 92^((36-{awg})/39)")
+col1.metric(lbl_cu_dim, f"{val_cu_dim:.3f} mm")
+col1.caption(cap_cu_dim)
 
-col2.metric("Total Wire Dia. (Including enamel)", f"{d_total.to(u.mm).magnitude:.3f} mm")
-col2.caption(f"{d_cu.to(u.mm).magnitude:.3f} mm + 2({t_enamel_mm:.4f} mm)")
+col2.metric(lbl_tot_dim, f"{val_tot_dim:.3f} mm")
+col2.caption(cap_tot_dim)
 
 col3.metric("Outer Radius (b)", f"{b.to(u.mm).magnitude:.2f} mm")
 if calc_mode == "By Current Density":
-    col3.caption(f"√({a_val:.2f}² + ({V_val:.1f}V × {A_total.to(u.mm**2).magnitude:.4f}mm²) / ({j.to(u.A/u.mm**2).magnitude:.2f}A/mm² × 1.68e-8Ω·m × {f_val:.4f} × π × {L_val:.1f}mm))")
+    col3.caption(f"√({a_val:.2f}² + ({V_val:.1f}V × {A_cu_val:.4f}mm²) / ({j.to(u.A/u.mm**2).magnitude:.2f}A/mm² × 1.68e-8Ω·m × {f_val:.4f} × π × {L_val:.1f}mm))")
 else:
     col3.caption("User Input")
 
 col4.metric("Radial Build", f"{(b - a).to(u.mm).magnitude:.2f} mm")
 col4.caption(f"{b.to(u.mm).magnitude:.2f} mm - {a_val:.2f} mm")
 
-
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Mean Turn Length", f"{l_bar.to(u.mm).magnitude:.1f} mm")
 col1.caption(f"π × ({a_val:.2f} mm + {b.to(u.mm).magnitude:.2f} mm)")
 
 col2.metric("Number of Turns", f"{N.to(u.dimensionless).magnitude:.0f}")
-col2.caption(f"({f_val:.4f} × {L_val:.1f} mm × {(b.to(u.mm).magnitude - a_val):.2f} mm) / {A_total.to(u.mm**2).magnitude:.4f} mm²")
+col2.caption(f"({f_val:.4f} × {L_val:.1f} mm × {(b.to(u.mm).magnitude - a_val):.2f} mm) / {A_cu_val:.4f} mm²")
 
-col3.metric("Wire Length", f"{total_length.to(u.m).magnitude:.0f} m")
+col3.metric("Conductor Length", f"{total_length.to(u.m).magnitude:.0f} m")
 col3.caption(f"{N.to(u.dimensionless).magnitude:.0f} turns × {l_bar.to(u.mm).magnitude:.1f} mm")
 
-col4.metric("Cu Wire Mass", f"{m_wire.to(u.g).magnitude:.0f} g")
+col4.metric("Cu Mass", f"{m_wire.to(u.g).magnitude:.0f} g")
 col4.caption(f"8.96 g/cm³ × {A_cu.to(u.cm**2).magnitude:.5f} cm² × {total_length.to(u.cm).magnitude:.1f} cm")
 
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Total Wire Area (with enamel)", f"{A_total.to(u.mm**2).magnitude:.4f} mm²")
-col1.caption(f"π × ({d_total.to(u.mm).magnitude:.3f} mm / 2)²")
+col1.metric("Total Layer Area (with insul.)", f"{A_total_val:.4f} mm²")
+col1.caption(cap_area_tot)
 
 
 # --- 2. COIL ELECTRICAL ---
 st.header("2. Coil Electrical")
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Bare Cu Area", f"{A_cu.to(u.mm**2).magnitude:.4f} mm²")
-col1.caption(f"π × ({d_cu.to(u.mm).magnitude:.3f} mm / 2)²")
+col1.metric("Bare Cu Area", f"{A_cu_val:.4f} mm²")
+col1.caption(cap_area_cu)
 
 col2.metric("Resistance", f"{R_coil.to(u.ohm).magnitude:.2f} Ω")
-col2.caption(f"1.68e-8 Ω·m × {total_length.to(u.m).magnitude:.2f} m / {A_cu.to(u.mm**2).magnitude:.4f} mm²")
+col2.caption(f"1.68e-8 Ω·m × {total_length.to(u.m).magnitude:.2f} m / {A_cu_val:.4f} mm²")
 
 col3.metric("Current", f"{I.to(u.A).magnitude:.3f} A")
 col3.caption(f"{V_val:.1f} V / {R_coil.to(u.ohm).magnitude:.2f} Ω")
@@ -199,7 +247,7 @@ col1.metric("Peak Current Density (j)", f"{j.to(u.A/u.mm**2).magnitude:.2f} A/mm
 if calc_mode == "By Current Density":
     col1.caption("User Input")
 else:
-    col1.caption(f"{I.to(u.A).magnitude:.3f} A / {A_cu.to(u.mm**2).magnitude:.4f} mm²")
+    col1.caption(f"{I.to(u.A).magnitude:.3f} A / {A_cu_val:.4f} mm²")
 
 col2.metric("Ampere-Turns (NI)", f"{NI.to(u.A).magnitude:.0f} AT")
 col2.caption(f"{N.to(u.dimensionless).magnitude:.0f} turns × {I.to(u.A).magnitude:.3f} A")
@@ -244,7 +292,6 @@ col3.caption(f"{P_avg.to(u.W).magnitude:.2f} W × {n_coils_val} coils")
 # --- 4. THERMAL ANALYSIS & TEMPERATURE RISE ---
 st.header("4. Thermal Analysis & Temperature Rise")
 
-# Calculate exposed surface area: cylinder area + two side flanges
 A_surface = (2 * np.pi * b * L) + (2 * np.pi * (b**2 - a**2))
 A_surface_m2 = A_surface.to(u.m**2).magnitude
 delta_T = P_avg.to(u.W).magnitude / (h_conv_val * A_surface_m2)
@@ -267,7 +314,6 @@ st.info("💡 **Thermal Note:** This estimation assumes the coil is cooling via 
 
 
 # --- GLOBAL PLOT LIMITS & CALCS ---
-# Lock X-axis scale for perfect vertical alignment across all plots
 L_mm = L.to(u.mm).magnitude
 a_mm = a.to(u.mm).magnitude
 b_mm = b.to(u.mm).magnitude
@@ -400,7 +446,6 @@ col3.metric("Work done on ball", f"{W.to(u.mJ).magnitude:.2f} mJ")
 col3.caption(f"∫ F_z dz ({z0_val - r_ball_val:.1f} to {z0_val + r_ball_val:.1f})")
 
 st.markdown("### Performance After 1 Coil Kick")
-# RPM Calculation for Single Kick Velocity
 rpm_1kick = (v_f.to(u.mm/u.s).magnitude / track_circ_val) * 60
 
 col1, col2, col3, col4 = st.columns(4)
@@ -506,7 +551,7 @@ B_plot = B_z(z_vals_field, R_eff, L, N, I).m_as(u.mT)
 fig_field, ax1 = plt.subplots(figsize=(8, 5))
 
 ax1.plot(z_plot_mm, B_plot, 'b-', linewidth=2, label='$B_z$')
-ax1.axvline(z_0_mm, color='k', linestyle=':', label='Sensor')
+ax1.axvline(z_0.m_as(u.mm), color='k', linestyle=':', label='Sensor')
 ax1.axvspan(-L.m_as(u.mm)/2, L.m_as(u.mm)/2, color='k', alpha=0.2, label='Solenoid extent')
 
 ax1.set_xlim(plot_x_min_val, plot_x_max_val)
@@ -616,12 +661,11 @@ st.info("💡 **Understanding Suck-Back:** The force naturally becomes negative 
 st.sidebar.markdown("---")
 st.sidebar.subheader("Export Data")
 
-# Collect all computed variables into a clean dictionary
 export_data = {
     "Parameter": [
-        "Wire AWG", "Enamel Thickness (mm)", "Fill Factor", "Voltage (V)", "Coil Length L (mm)", "Inner Radius a (mm)", "Outer Radius b (mm)",
-        "Bare Cu Dia (mm)", "Total Wire Dia (mm)", "Radial Build (mm)", "Mean Turn Length (mm)", "Number of Turns", "Wire Length (m)", "Cu Wire Mass (g)",
-        "Bare Cu Area (mm²)", "Total Wire Area (mm²)", "Resistance (Ω)", "Peak Current (A)", "Peak Power (W)", "Current Density (A/mm²)", "Ampere-Turns (AT)",
+        "Conductor Type", "Insulation", "Fill Factor", "Voltage (V)", "Coil Length L (mm)", "Inner Radius a (mm)", "Outer Radius b (mm)",
+        "Bare Cu Thickness/Dia (mm)", "Total Layer/Wire Thickness (mm)", "Radial Build (mm)", "Mean Turn Length (mm)", "Number of Turns", "Conductor Length (m)", "Cu Mass (g)",
+        "Bare Cu Area (mm²)", "Total Layer Area (mm²)", "Resistance (Ω)", "Peak Current (A)", "Peak Power (W)", "Current Density (A/mm²)", "Ampere-Turns (AT)",
         "Track Circumference (mm)", "System Coils", "Dist. ON Per Cycle (mm)", "Coil Duty Cycle (%)", "System Duty Cycle (%)", "RMS Current Density (A/mm²)", "Avg Power Per Coil (W)", "Avg Power System (W)",
         "Exposed Area (cm²)", "Est. Temp Rise (°C)", "Est. Final Temp (°C)",
         "Ball Radius (mm)", "Ball Mass (g)", "Switch Position z_0 (mm)", "Max Force B_z at Center (mT)", "Work Done on Ball (mJ)", "Velocity (1 Kick) (m/s)", "Track Speed 1-Kick (RPM)",
@@ -629,9 +673,9 @@ export_data = {
         "Inductance (mH)", "Time Constant τ (ms)", "99% Rise Time 5τ (ms)", "Stored Energy (mJ)", "Max Speed Before Choke (RPM)"
     ],
     "Value": [
-        awg, t_enamel_mm, f_val, V_val, L_val, a_val, b.to(u.mm).magnitude,
-        d_cu.to(u.mm).magnitude, d_total.to(u.mm).magnitude, (b - a).to(u.mm).magnitude, l_bar.to(u.mm).magnitude, N.to(u.dimensionless).magnitude, total_length.to(u.m).magnitude, m_wire.to(u.g).magnitude,
-        A_cu.to(u.mm**2).magnitude, A_total.to(u.mm**2).magnitude, R_coil.to(u.ohm).magnitude, I.to(u.A).magnitude, P.magnitude, j.to(u.A/u.mm**2).magnitude, NI.to(u.A).magnitude,
+        csv_conductor, csv_insulation, f_val, V_val, L_val, a_val, b.to(u.mm).magnitude,
+        val_cu_dim, val_tot_dim, (b - a).to(u.mm).magnitude, l_bar.to(u.mm).magnitude, N.to(u.dimensionless).magnitude, total_length.to(u.m).magnitude, m_wire.to(u.g).magnitude,
+        A_cu_val, A_total_val, R_coil.to(u.ohm).magnitude, I.to(u.A).magnitude, P.magnitude, j.to(u.A/u.mm**2).magnitude, NI.to(u.A).magnitude,
         track_circ_val, n_coils_val, dist_on_val, duty_cycle_pct, (duty_cycle_pct * n_coils_val), j_rms.to(u.A/u.mm**2).magnitude, P_avg.to(u.W).magnitude, P_sys_avg.to(u.W).magnitude,
         A_surface.to(u.cm**2).magnitude, delta_T, T_final,
         r_ball_val, m_ball.to(u.g).magnitude, z0_val, B_0.to(u.mT).magnitude, W.to(u.mJ).magnitude, v_f.to(u.m/u.s).magnitude, rpm_1kick,
@@ -640,7 +684,6 @@ export_data = {
     ]
 }
 
-# Convert to DataFrame and then to a CSV string
 df_export = pd.DataFrame(export_data)
 csv_export = df_export.to_csv(index=False).encode('utf-8')
 
