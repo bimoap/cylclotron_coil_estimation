@@ -36,6 +36,7 @@ if conductor_type == "Round Wire (AWG)":
 
     # Orthocyclic limit = pi / (2 * sqrt(3)) ≈ 0.9069
     geom_limit = np.pi / (2 * np.sqrt(3))
+    # Copper Space Factor scales the geometric limit by the bare-to-total area ratio
     f_cu_default = geom_limit * (A_cu_val / A_total_val)
     
     L_val = st.sidebar.number_input("Solenoid Length 'L' (mm)", value=20.0)
@@ -101,18 +102,30 @@ f_val = st.sidebar.number_input(
 )
 st.sidebar.caption(f"*(Theoretical max for this conductor: **{f_cu_default:.4f}**)*")
 
-V_val = st.sidebar.number_input("Voltage (V)", value=12.0)
 a_val = st.sidebar.number_input("Inner Radius 'a' (mm)", value=12.7)
 
-# --- NEW: CALCULATION MODE ---
+# --- NEW: POWER DRIVE MODE ---
 st.sidebar.markdown("---")
-calc_mode = st.sidebar.radio("Calculation Mode", ["By Current Density", "By Outer Radius"], index=1)
+power_mode = st.sidebar.radio("Power Drive Mode", ["Constant Voltage (CV)", "Constant Current (CC)"])
 
-if calc_mode == "By Current Density":
-    j_val = st.sidebar.number_input("Current Density (A/mm²)", value=4.0)
-    b_val = None
+if power_mode == "Constant Voltage (CV)":
+    V_val = st.sidebar.number_input("Voltage (V)", value=12.0)
+    I_val = None
+    
+    calc_mode = st.sidebar.radio("Coil Sizing Mode", ["By Current Density", "By Outer Radius"], index=1)
+    if calc_mode == "By Current Density":
+        j_val = st.sidebar.number_input("Current Density (A/mm²)", value=4.0)
+        b_val = None
+    else:
+        b_val = st.sidebar.number_input("Outer Radius 'b' (mm)", value=31.5)
+        j_val = None
 else:
+    I_val = st.sidebar.number_input("Constant Current (A)", value=5.0)
+    V_val = None
+    
+    st.sidebar.info("💡 In Constant Current mode, current density is locked by your wire choice. Please define the coil size by Outer Radius.")
     b_val = st.sidebar.number_input("Outer Radius 'b' (mm)", value=31.5)
+    calc_mode = "By Outer Radius"
     j_val = None
 
 # --- CYCLOTRON SETTINGS ---
@@ -152,8 +165,8 @@ st.sidebar.subheader("Thermal Settings")
 h_conv_val = st.sidebar.number_input("Convection Coeff. h (W/m²·K)", value=10.0, step=1.0)
 T_ambient_val = st.sidebar.number_input("Ambient Temp (°C)", value=20.0, step=1.0)
 
-# --- APPLY UNITS & CONSTANTS ---
-V = V_val * u.V
+
+# --- UNIVERSAL CALCULATIONS ---
 a = a_val * u.mm
 L = L_val * u.mm
 f = f_val
@@ -161,34 +174,49 @@ r_ball = r_ball_val * u.mm
 z_0 = z0_val * u.mm
 V_tvs = V_tvs_val * u.V
 
-rho = 1.68e-8 * u.ohm * u.m  # copper resistivity
+rho = 1.68e-8 * u.ohm * u.m
 rho_cu = 8.96 * u.g / u.cm**3
 rho_iron = 7874 * u.kg / u.m**3
 
 A_cu = A_cu_val * u.mm**2
 A_total = A_total_val * u.mm**2
 
-# --- CORE CALCULATION BASED ON SELECTED MODE ---
-# Note: Equations updated to mathematically isolate Bare Cu Area (A_cu) for flawless foil integration
-if calc_mode == "By Current Density":
-    j = j_val * u.A / u.mm**2
-    # Calculate outer radius b
-    b = np.sqrt(a**2 + (V * A_cu) / (j * rho * f * np.pi * L))
-else:
+# Core Universal Math Block
+if power_mode == "Constant Voltage (CV)":
+    V = V_val * u.V
+    if calc_mode == "By Current Density":
+        j = j_val * u.A / u.mm**2
+        # Solve for b dynamically
+        b = np.sqrt(a**2 + (V * A_total) / (j * rho * f * np.pi * L))
+    else:
+        b = b_val * u.mm
+    
+    # Universal Geometry
+    l_bar = np.pi * (a + b)
+    N = (f * L * (b - a)) / A_total
+    total_length = N * l_bar
+    R_coil = rho * total_length / A_cu
+    
+    I = V / R_coil
+    j = I / A_cu
+    P = (I * V).to(u.W)
+    
+else: # Constant Current (CC)
+    I = I_val * u.A
     b = b_val * u.mm
-    # Calculate current density j based on chosen b
-    j_raw = (V * A_cu) / ((b**2 - a**2) * rho * f * np.pi * L)
-    j = j_raw.to(u.A / u.mm**2)
+    
+    # Universal Geometry
+    l_bar = np.pi * (a + b)
+    N = (f * L * (b - a)) / A_total
+    total_length = N * l_bar
+    R_coil = rho * total_length / A_cu
+    
+    V = I * R_coil
+    j = I / A_cu
+    P = (I * V).to(u.W)
 
-# --- DERIVED QUANTITIES ---
-l_bar = np.pi * (a + b)
-N = V / (j * rho * l_bar)
-I = j * A_cu                               
-NI = N * I                                 
-total_length = N * l_bar
-R_coil = rho * total_length / A_cu         
-P = (I * V).to(u.W)
-m_wire = rho_cu * A_cu * l_bar * N         
+m_wire = rho_cu * A_cu * l_bar * N
+NI = N * I
 
 
 # --- 1. COIL GEOMETRY ---
@@ -201,8 +229,8 @@ col2.metric(lbl_tot_dim, f"{val_tot_dim:.3f} mm")
 col2.caption(cap_tot_dim)
 
 col3.metric("Outer Radius (b)", f"{b.to(u.mm).magnitude:.2f} mm")
-if calc_mode == "By Current Density":
-    col3.caption(f"√({a_val:.2f}² + ({V_val:.1f}V × {A_cu_val:.4f}mm²) / ({j.to(u.A/u.mm**2).magnitude:.2f}A/mm² × 1.68e-8Ω·m × {f_val:.4f} × π × {L_val:.1f}mm))")
+if power_mode == "Constant Voltage (CV)" and calc_mode == "By Current Density":
+    col3.caption(f"√({a_val:.2f}² + ({V_val:.1f}V × {A_total_val:.4f}mm²) / ({j.to(u.A/u.mm**2).magnitude:.2f}A/mm² × 1.68e-8Ω·m × {f_val:.4f} × π × {L_val:.1f}mm))")
 else:
     col3.caption("User Input")
 
@@ -214,7 +242,7 @@ col1.metric("Mean Turn Length", f"{l_bar.to(u.mm).magnitude:.1f} mm")
 col1.caption(f"π × ({a_val:.2f} mm + {b.to(u.mm).magnitude:.2f} mm)")
 
 col2.metric("Number of Turns", f"{N.to(u.dimensionless).magnitude:.0f}")
-col2.caption(f"({f_val:.4f} × {L_val:.1f} mm × {(b.to(u.mm).magnitude - a_val):.2f} mm) / {A_cu_val:.4f} mm²")
+col2.caption(f"({f_val:.4f} × {L_val:.1f} mm × {(b.to(u.mm).magnitude - a_val):.2f} mm) / {A_total_val:.4f} mm²")
 
 col3.metric("Conductor Length", f"{total_length.to(u.m).magnitude:.0f} m")
 col3.caption(f"{N.to(u.dimensionless).magnitude:.0f} turns × {l_bar.to(u.mm).magnitude:.1f} mm")
@@ -236,15 +264,20 @@ col1.caption(cap_area_cu)
 col2.metric("Resistance", f"{R_coil.to(u.ohm).magnitude:.2f} Ω")
 col2.caption(f"1.68e-8 Ω·m × {total_length.to(u.m).magnitude:.2f} m / {A_cu_val:.4f} mm²")
 
-col3.metric("Current", f"{I.to(u.A).magnitude:.3f} A")
-col3.caption(f"{V_val:.1f} V / {R_coil.to(u.ohm).magnitude:.2f} Ω")
+# Dynamic UI swapping based on Power Mode
+if power_mode == "Constant Voltage (CV)":
+    col3.metric("Draw Current", f"{I.to(u.A).magnitude:.3f} A")
+    col3.caption(f"{V_val:.1f} V / {R_coil.to(u.ohm).magnitude:.2f} Ω")
+else:
+    col3.metric("Req. Voltage", f"{V.to(u.V).magnitude:.2f} V")
+    col3.caption(f"{I_val:.1f} A × {R_coil.to(u.ohm).magnitude:.2f} Ω")
 
 col4.metric("Peak Power", f"{P.magnitude:.1f} W")
-col4.caption(f"{I.to(u.A).magnitude:.3f} A × {V_val:.1f} V")
+col4.caption(f"{I.to(u.A).magnitude:.3f} A × {V.to(u.V).magnitude:.2f} V")
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Peak Current Density (j)", f"{j.to(u.A/u.mm**2).magnitude:.2f} A/mm²")
-if calc_mode == "By Current Density":
+if power_mode == "Constant Voltage (CV)" and calc_mode == "By Current Density":
     col1.caption("User Input")
 else:
     col1.caption(f"{I.to(u.A).magnitude:.3f} A / {A_cu_val:.4f} mm²")
@@ -663,7 +696,7 @@ st.sidebar.subheader("Export Data")
 
 export_data = {
     "Parameter": [
-        "Conductor Type", "Insulation", "Fill Factor", "Voltage (V)", "Coil Length L (mm)", "Inner Radius a (mm)", "Outer Radius b (mm)",
+        "Power Drive Mode", "Conductor Type", "Insulation", "Fill Factor", "Req/Set Voltage (V)", "Coil Length L (mm)", "Inner Radius a (mm)", "Outer Radius b (mm)",
         "Bare Cu Thickness/Dia (mm)", "Total Layer/Wire Thickness (mm)", "Radial Build (mm)", "Mean Turn Length (mm)", "Number of Turns", "Conductor Length (m)", "Cu Mass (g)",
         "Bare Cu Area (mm²)", "Total Layer Area (mm²)", "Resistance (Ω)", "Peak Current (A)", "Peak Power (W)", "Current Density (A/mm²)", "Ampere-Turns (AT)",
         "Track Circumference (mm)", "System Coils", "Dist. ON Per Cycle (mm)", "Coil Duty Cycle (%)", "System Duty Cycle (%)", "RMS Current Density (A/mm²)", "Avg Power Per Coil (W)", "Avg Power System (W)",
@@ -673,7 +706,7 @@ export_data = {
         "Inductance (mH)", "Time Constant τ (ms)", "99% Rise Time 5τ (ms)", "Stored Energy (mJ)", "Max Speed Before Choke (RPM)"
     ],
     "Value": [
-        csv_conductor, csv_insulation, f_val, V_val, L_val, a_val, b.to(u.mm).magnitude,
+        power_mode, csv_conductor, csv_insulation, f_val, V.to(u.V).magnitude, L_val, a_val, b.to(u.mm).magnitude,
         val_cu_dim, val_tot_dim, (b - a).to(u.mm).magnitude, l_bar.to(u.mm).magnitude, N.to(u.dimensionless).magnitude, total_length.to(u.m).magnitude, m_wire.to(u.g).magnitude,
         A_cu_val, A_total_val, R_coil.to(u.ohm).magnitude, I.to(u.A).magnitude, P.magnitude, j.to(u.A/u.mm**2).magnitude, NI.to(u.A).magnitude,
         track_circ_val, n_coils_val, dist_on_val, duty_cycle_pct, (duty_cycle_pct * n_coils_val), j_rms.to(u.A/u.mm**2).magnitude, P_avg.to(u.W).magnitude, P_sys_avg.to(u.W).magnitude,
