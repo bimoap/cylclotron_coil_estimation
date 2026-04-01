@@ -19,7 +19,7 @@ def awg_diameter(n):
 # --- SIDEBAR INPUTS ---
 st.sidebar.header("Input Parameters")
 
-conductor_type = st.sidebar.radio("Conductor Type", ["Round Wire (AWG)", "Foil / Strip Copper"])
+conductor_type = st.sidebar.radio("Conductor Type", ["Round Wire (AWG)", "Round Wire (mm²)", "Foil / Strip Copper"])
 
 if conductor_type == "Round Wire (AWG)":
     awg = st.sidebar.number_input("Wire AWG", min_value=1, max_value=40, value=20, step=1)
@@ -54,6 +54,41 @@ if conductor_type == "Round Wire (AWG)":
     cap_area_tot = f"π × ({d_total_val:.3f} mm / 2)²"
     
     csv_conductor = f"AWG {awg}"
+    csv_insulation = f"{t_enamel_thou} thou Enamel"
+
+elif conductor_type == "Round Wire (mm²)":
+    A_cu_input = st.sidebar.number_input("Bare Cu Area (mm²)", min_value=0.001, value=0.520, step=0.01, format="%.3f")
+    
+    t_enamel_thou = st.sidebar.number_input("Enamel Thickness (thou)", min_value=0.0, max_value=10.0, value=1.0, step=0.1)
+    t_enamel_mm = t_enamel_thou * 0.0254
+    st.sidebar.caption(f"*(Metric equivalent: {t_enamel_mm:.4f} mm)*")
+    
+    # Reverse calculate diameter from area
+    d_cu_val = 2 * np.sqrt(A_cu_input / np.pi)
+    d_total_val = d_cu_val + (2 * t_enamel_mm)
+    
+    A_cu_val = A_cu_input
+    A_total_val = np.pi * (d_total_val / 2) ** 2   
+
+    # Orthocyclic limit = pi / (2 * sqrt(3)) ≈ 0.9069
+    geom_limit = np.pi / (2 * np.sqrt(3))
+    f_cu_default = geom_limit * (A_cu_val / A_total_val)
+    
+    L_val = st.sidebar.number_input("Solenoid Length 'L' (mm)", value=20.0)
+    
+    # UI Labels for Round Wire (mm²)
+    lbl_cu_dim = "Bare Cu Diameter"
+    val_cu_dim = d_cu_val
+    cap_cu_dim = f"Derived from {A_cu_val:.3f} mm²"
+    
+    lbl_tot_dim = "Total Wire Dia. (with enamel)"
+    val_tot_dim = d_total_val
+    cap_tot_dim = f"{d_cu_val:.3f} mm + 2({t_enamel_mm:.4f} mm)"
+    
+    cap_area_cu = "User Input"
+    cap_area_tot = f"π × ({d_total_val:.3f} mm / 2)²"
+    
+    csv_conductor = f"{A_cu_val:.3f} mm² Wire"
     csv_insulation = f"{t_enamel_thou} thou Enamel"
 
 else:
